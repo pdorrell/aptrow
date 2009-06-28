@@ -11,7 +11,7 @@
   You should have received a copy of the GNU General Public License along with Aptrow (as license-gplv3.txt).
   If not, see <http://www.gnu.org/licenses/>."""
 
-# Platform: Python 3.1rc1 (currently being developed on MS Windows)
+# Platform: Python 3.1 (currently being developed on MS Windows)
 
 # SECURITY NOTE: This demo application gives read-only access (to any web client that can access localhost)
 # to all files and directories on the local filesystem which can be accessed by the user running the application. 
