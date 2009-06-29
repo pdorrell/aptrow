@@ -120,6 +120,8 @@ class AptrowApp:
             msg = "<p>AppClass sez, you requested <strong>%s</strong> with query string <b>%s</b></p>"
             self.message = msg % (h(pathInfo), hr(queryString))
             for text in object.page(self): yield text
+        except MissingParameterException as exc:
+            yield self.not_found("For resource type \"%s\" %s" % (pathInfo, h(exc.message)))
         except ResourceTypeNotFoundForPathException as exc:
             yield self.not_found("No resource type defined for path \"%s\"" % pathInfo)
         except (NoSuchObjectException, ParameterException) as exception:
@@ -129,6 +131,11 @@ class ParameterException(Exception):
     """Thrown when a URL parameter is invalid or missing"""
     def __init__(self, message):
         self.message = message
+        
+class MissingParameterException(Exception):
+    """Thrown when a required URL parameter is missing"""
+    def __init__(self, name = None):
+        self.message = "Missing parameter %s" % name
   
 class AptrowQueryParams:
     """An object wrapping URL parameters, and presenting them as follows:
@@ -191,27 +198,41 @@ class NoSuchObjectException(Exception):
     Generally thrown by the 'checkExists()' method."""
     def __init__(self, message):
         self.message = message
-
-class StringParam:
-    """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
-    def __init__(self, name):
-        self.name = name
         
-    def getValue(self, queryParams):
-        return queryParams.getRequiredString(self.name)
+class Param:
+    """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
+    def __init__(self, name, optional = False):
+        self.name = name
+        self.optional = optional
+        
+    def getValueFromParams(self, params):
+        return self.getValue(params.getString(self.name))
+        
+    def getValue(self, stringValue):
+        if stringValue == None:
+            if self.optional:
+                return None
+            else:
+                raise MissingParameterException(self.name)
+        else:
+            return self.getValueFromString(stringValue)
+
+class StringParam(Param):
+    """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
+        
+    def getValueFromString(self, stringValue):
+        return stringValue
     
-class ResourceParam:
+class ResourceParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a URL representing
     another resource (to be used as input when creating the resource being created)."""
-    def __init__(self, name):
-        self.name = name
         
-    def getValue(self, queryParams):
-        return getResource(queryParams.getRequiredString(self.name))
+    def getValueFromString(self, stringValue):
+        return getResource(stringValue)
     
 def getResourceParams(queryParams, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
-    return [paramDefinition.getValue(queryParams) for paramDefinition in paramDefinitions]
+    return [paramDefinition.getValueFromParams(queryParams) for paramDefinition in paramDefinitions]
   
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
