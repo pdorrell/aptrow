@@ -71,6 +71,13 @@ def getResource(url):
     else:
         raise Error("Non-local resource URL's not yet implemented (doesn't start with '/'): %s" % localUrl)
     
+class UnknownAttributeException(Exception):
+    """Thrown when an attribute name is not valid."""
+    def __init__(self, attribute, resource):
+        self.attribute = attribute
+        self.resource = resource
+        self.message = "No attribute \"%s\" defined for resource [%s]" % (attribute, resource.heading())
+    
 def getResourceFromPathAndQuery(path, query):
     """Look up resource object from URL path and query. This includes processing of parameters passed to the
     base resource type, and optionally the processing of attribute parameters, for when one resource is
@@ -85,9 +92,10 @@ def getResourceFromPathAndQuery(path, query):
     aptrowQueryParams = AptrowQueryParams(queryParams)
     object = resourceClass(*getResourceParams(aptrowQueryParams, resourceClass.resourceParams))
     for attribute,params in aptrowQueryParams.attributesAndParams():
-        object = object.resolveAttribute(attribute, params)
-        if object == None:
-            raise Error("Failed to resolve attribute %s" % attribute)
+        attributeValue = object.resolveAttribute(attribute, params)
+        if attributeValue == None:
+            raise UnknownAttributeException(attribute, object)
+        object = attributeValue
     return object
                     
 class AptrowApp:
@@ -121,7 +129,9 @@ class AptrowApp:
             self.message = msg % (h(pathInfo), hr(queryString))
             for text in object.page(self): yield text
         except MissingParameterException as exc:
-            yield self.not_found("For resource type \"%s\" %s" % (pathInfo, h(exc.message)))
+            yield self.not_found("For resource type \"%s\" %s" % (pathInfo, exc.message))
+        except UnknownAttributeException as exc:
+            yield self.not_found(exc.message)
         except ResourceTypeNotFoundForPathException as exc:
             yield self.not_found("No resource type defined for path \"%s\"" % pathInfo)
         except (NoSuchObjectException, ParameterException) as exception:
@@ -200,15 +210,14 @@ class NoSuchObjectException(Exception):
         self.message = message
         
 class Param:
-    """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
+    """Parameter definition for an expected base resource parameter."""
     def __init__(self, name, optional = False):
         self.name = name
         self.optional = optional
         
-    def getValueFromParams(self, params):
-        return self.getValue(params.getString(self.name))
-        
     def getValue(self, stringValue):
+        """Get value of parameter from a string value. 
+        (Depends on definition of getStringValue method, is a value is supplied.)"""
         if stringValue == None:
             if self.optional:
                 return None
@@ -221,6 +230,7 @@ class StringParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
         
     def getValueFromString(self, stringValue):
+        """Value for a string parameter is just the string"""
         return stringValue
     
 class ResourceParam(Param):
@@ -228,12 +238,30 @@ class ResourceParam(Param):
     another resource (to be used as input when creating the resource being created)."""
         
     def getValueFromString(self, stringValue):
+        """Convert to a value by looking up resource from URL"""
         return getResource(stringValue)
     
 def getResourceParams(queryParams, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
-    return [paramDefinition.getValueFromParams(queryParams) for paramDefinition in paramDefinitions]
+    return [paramDefinition.getValue(queryParams.getString(paramDefinition.name)) 
+            for paramDefinition in paramDefinitions]
   
+def attribute(*params):
+    """Decorator for attribute methods"""
+    def decorator(func):
+        return AttributeMethod(func, params)
+    return decorator
+
+class AttributeMethod:
+    """An object that replaces a method decorated by @attribute. Wraps the method and parameter definitions."""
+    def __init__(self, method, params):
+        self.method = method
+        self.params = params
+        
+    def call(self, resource, paramsDict):
+        """How to call this method given a resource and a dict of named parameter values."""
+        return self.method(resource, *[param.getValue(paramsDict.get(param.name)) for param in self.params])
+        
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
     def checkExists(self):
@@ -279,6 +307,14 @@ class Resource:
             traceback.print_exc()
             yield "<div class =\"aptrowError\">Error: %s</div>" % (hr(error.args),)
         yield "</body></html>"
+        
+    def resolveAttribute(self, attribute, params):
+        """Resolve an attribute, by looking for a method with same name decorated by @attribute decorator."""
+        attributeMethod = self.__class__.__dict__.get(attribute)
+        if attributeMethod == None or attributeMethod.__class__ != AttributeMethod:
+            return None
+        else:
+            return attributeMethod.call(self, params)
         
 class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
@@ -391,7 +427,7 @@ class Directory(BaseResource):
             for name, entry in fileEntries:
                 yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
             yield "</ul>"
-        
+            
 @resourceTypeName("file")
 class File(BaseResource):
     """A resource representing a file on the local file system."""
@@ -436,12 +472,10 @@ class File(BaseResource):
         # Link showing file as a zip file (you'll find out when you click on it if it really is a Zip file).
         yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url() 
         
-    def resolveAttribute(self, attribute, params):
-        """Resolve the 'contents' attribute."""
-        if attribute == "contents":
-            return FileContents(self, params.get("contentType"))
-        else:
-            return None
+    @attribute(StringParam("contentType", optional = True))
+    def contents(self, contentType):
+        """Return contents of file with optional content type"""
+        return FileContents(self, contentType)
         
 @resourceTypeName("string")
 class String(BaseResource):
@@ -517,12 +551,10 @@ class ZipFile(BaseResource):
             yield "<li><a href=\"%s\">%s</a></li>" % (ZipItem(self, itemName).url(), h(itemName))
         yield "</ul>"
         
-    def resolveAttribute(self, attribute, params):
-        """Retrieve a named 'item' from within this zip file."""
-        if attribute == "item":
-            return ZipItem(self, params.get("name"))
-        else:
-            return None
+    @attribute(StringParam("name", optional = True))
+    def item(self, name):
+        """Return a named item from this zip file as a ZipItem resource"""
+        return ZipItem(self, name)
         
 class ZipItem(AttributeResource):
     """A resource representing a named item within a zip file. (Note: current implementation
@@ -565,12 +597,10 @@ class ZipItem(AttributeResource):
         yield "</p>"
         yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url()
 
-    def resolveAttribute(self, attribute, params):
-        """Resolve the 'contents' attribute."""
-        if attribute == "contents":
-            return FileContents(self, params.get("contentType"))
-        else:
-            return None
+    @attribute(StringParam("contentType", optional = True))
+    def contents(self, contentType):
+        """Return contents of zip item with optional content type"""
+        return FileContents(self, contentType)
 
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
