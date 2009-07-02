@@ -502,6 +502,39 @@ class String(BaseResource):
         yield "<p>String: <b>%s</b></p>" % h(self.value)
         
 import zipfile
+
+class ZipItemsTree:
+    def __init__(self):
+        self.files = []
+        self.subdirs = {}
+        
+    def addPath(self, path):
+        slashPos = path.find("/")
+        if slashPos == -1:
+            self.files.append(path)
+        else:
+            subdir = path[:slashPos]
+            restOfPath = path[slashPos+1:]
+            subdirTree = self.subdirs.get(subdir)
+            if subdirTree == None:
+                subdirTree = ZipItemsTree()
+                self.subdirs[subdir] = subdirTree
+            if len(restOfPath) > 0:
+                subdirTree.addPath(restOfPath)
+    
+    def asHtml(self):
+        buffer = io.StringIO()
+        subdirKeys = self.subdirs.keys()
+        if len(subdirKeys) + len(self.files) > 0:
+            buffer.write("<ul>")
+            for file in self.files:
+                buffer.write("<li>%s</li>" % h(file))
+            for subdir in subdirKeys:
+                 buffer.write("<li>%s\n" % h(subdir))
+                 buffer.write("%s\n" % self.subdirs[subdir].asHtml())
+                 buffer.write("</li>\n")
+            buffer.write("</ul>")
+        return buffer.getvalue()
         
 @resourceTypeName("zipfile")
 class ZipFile(BaseResource):
@@ -509,14 +542,18 @@ class ZipFile(BaseResource):
     as nested resources. The ZipFile resource needs to be created from a 'file' resource, where
     the 'file' can be anything with a suitable 'openBinaryFile()' method."""
     
-    resourceParams = [ResourceParam("file")]
+    resourceParams = [ResourceParam("file"), StringParam("view", optional = True)]
 
-    def __init__(self, fileResource):
+    def __init__(self, fileResource, view = "list"):
         self.fileResource = fileResource
+        self.view = view
+        
+    def withViewType(self, view):
+        return ZipFile(self.fileResource, view)
         
     def urlParams(self):
         """Parameters required to construct the URL for this resource."""
-        return {"file": [self.fileResource.url()]}
+        return {"file": [self.fileResource.url()], "view": [self.view]}
         
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
@@ -535,11 +572,26 @@ class ZipFile(BaseResource):
         finally:
             zipFile.close()
             
+    def viewLinks(self):
+        for view in ["list", "tree"]:
+            if self.view == view:
+                yield " %s" % view
+            else:
+                yield " <a href=\"%s\">%s</a>" % (self.withViewType(view).url(), view)
+            
     def html(self):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
-        for text in self.listZipInfosInHtml(): yield text
+        yield "<p>Views:"
+        for text in self.viewLinks(): yield text
+        yield "</p>"
+        if self.view == "list":
+            for text in self.listZipInfosInHtml(): yield text
+        elif self.view == "tree":
+            for text in self.listZipItemsTreeInHtml(): yield text
+        else:
+            yield "<p>Unknown view type <b>%s</b>" % self.view
 
     def listZipInfosInHtml(self):
         """Show list of links to zip items within the zip file."""
@@ -550,6 +602,16 @@ class ZipFile(BaseResource):
             itemName = zipInfo.filename
             yield "<li><a href=\"%s\">%s</a></li>" % (ZipItem(self, itemName).url(), h(itemName))
         yield "</ul>"
+        
+    def listZipItemsTreeInHtml(self):
+        """Show list of links to zip items as a tree."""
+        zipInfos = self.getZipInfos()
+        yield "<h3>Items Tree</h3>"
+        zipItemsTree = ZipItemsTree()
+        for zipInfo in zipInfos:
+            itemName = zipInfo.filename
+            zipItemsTree.addPath(itemName)
+        yield zipItemsTree.asHtml()
         
     @attribute(StringParam("name", optional = True))
     def item(self, name):
