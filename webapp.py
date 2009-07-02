@@ -261,7 +261,7 @@ class AttributeMethod:
     def call(self, resource, paramsDict):
         """How to call this method given a resource and a dict of named parameter values."""
         return self.method(resource, *[param.getValue(paramsDict.get(param.name)) for param in self.params])
-        
+    
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
     def checkExists(self):
@@ -504,14 +504,15 @@ class String(BaseResource):
 import zipfile
 
 class ZipItemsTree:
+    """Representation of items in a zip file as a recursively defined tree structure"""
     def __init__(self):
         self.files = []
         self.subdirs = {}
         
-    def addPath(self, path):
+    def addPath(self, path, zipItem):
         slashPos = path.find("/")
         if slashPos == -1:
-            self.files.append(path)
+            self.files.append((path, zipItem))
         else:
             subdir = path[:slashPos]
             restOfPath = path[slashPos+1:]
@@ -520,15 +521,16 @@ class ZipItemsTree:
                 subdirTree = ZipItemsTree()
                 self.subdirs[subdir] = subdirTree
             if len(restOfPath) > 0:
-                subdirTree.addPath(restOfPath)
+                subdirTree.addPath(restOfPath, zipItem)
     
     def asHtml(self):
         buffer = io.StringIO()
         subdirKeys = self.subdirs.keys()
         if len(subdirKeys) + len(self.files) > 0:
             buffer.write("<ul>")
-            for file in self.files:
-                buffer.write("<li>%s</li>" % h(file))
+            for file,zipItem in self.files:
+                buffer.write("<li><a href=\"%s\">%s</a> <small>(<a href=\"%s\">contents</a>)</small></li>" 
+                             % (zipItem.url(), h(file), FileContents(zipItem).url()))
             for subdir in subdirKeys:
                  buffer.write("<li>%s\n" % h(subdir))
                  buffer.write("%s\n" % self.subdirs[subdir].asHtml())
@@ -610,7 +612,7 @@ class ZipFile(BaseResource):
         zipItemsTree = ZipItemsTree()
         for zipInfo in zipInfos:
             itemName = zipInfo.filename
-            zipItemsTree.addPath(itemName)
+            zipItemsTree.addPath(itemName, ZipItem(self, itemName))
         yield zipItemsTree.asHtml()
         
     @attribute(StringParam("name", optional = True))
@@ -660,7 +662,7 @@ class ZipItem(AttributeResource):
         yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url()
 
     @attribute(StringParam("contentType", optional = True))
-    def contents(self, contentType):
+    def contents(self, contentType = None):
         """Return contents of zip item with optional content type"""
         return FileContents(self, contentType)
 
