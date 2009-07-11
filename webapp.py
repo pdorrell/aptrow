@@ -377,7 +377,7 @@ class Directory(BaseResource):
     resourceParams = [StringParam("path")]
     
     def __init__(self, path):
-        self.path = path
+        self.path = os.path.normpath(path)
         
     def urlParams(self):
         """Parameters required to construct the URL for this resource."""
@@ -385,7 +385,7 @@ class Directory(BaseResource):
 
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
-        return "Directory: %r" % self.path
+        return "Directory: %s" % self.path
     
     def checkExists(self):
         """Check if this directory exists on the local file system (and that it really is a directory)"""
@@ -449,7 +449,7 @@ class File(BaseResource):
     resourceParams = [StringParam("path")]
 
     def __init__(self, path):
-        self.path = path
+        self.path = os.path.normpath(path)
         
     def urlParams(self):
         """Parameters required to construct the URL for this resource."""
@@ -457,7 +457,7 @@ class File(BaseResource):
 
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
-        return "File: %r" % self.path
+        return "File: %s" % self.path
     
     def openBinaryFile(self):
         """Return an open file giving direct access to the contents of the file."""
