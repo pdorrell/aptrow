@@ -408,7 +408,19 @@ class Directory(BaseResource):
     
     def html(self):
         """HTML content for directory: show lists of files and sub-directories."""
+        parentDir = self.parent()
+        if parentDir:
+            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
         for text in self.listFilesAndDirectoriesInHtml(): yield text
+        
+    @attribute()
+    def parent(self):
+        """Parent directory"""
+        parentPath = os.path.dirname(self.path)
+        if parentPath == self.path:
+            return None
+        else:
+            return Directory(parentPath)
         
     def listFilesAndDirectoriesInHtml(self):
         """ Show each of files and sub-directories as a list of links to those resources."""
