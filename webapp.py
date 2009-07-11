@@ -532,7 +532,7 @@ class ZipItemsTree:
             buffer.write("<ul>")
             for file,zipItem in self.files:
                 buffer.write("<li><a href=\"%s\">%s</a> <small>(<a href=\"%s\">contents</a>)</small></li>" 
-                             % (zipItem.url(), h(file), FileContents(zipItem).url()))
+                             % (zipItem.url(), h(file), zipItem.contents().url()))
             for subdir in subdirKeys:
                  buffer.write("<li>%s\n" % h(subdir))
                  buffer.write("%s\n" % self.subdirs[subdir].asHtml())
