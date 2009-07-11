@@ -249,7 +249,8 @@ def getResourceParams(queryParams, paramDefinitions):
 def attribute(*params):
     """Decorator for attribute methods"""
     def decorator(func):
-        return AttributeMethod(func, params)
+        func.aptrowAttributeParams = params
+        return func
     return decorator
 
 class AttributeMethod:
@@ -311,10 +312,11 @@ class Resource:
     def resolveAttribute(self, attribute, params):
         """Resolve an attribute, by looking for a method with same name decorated by @attribute decorator."""
         attributeMethod = self.__class__.__dict__.get(attribute)
-        if attributeMethod == None or attributeMethod.__class__ != AttributeMethod:
-            return None
+        if hasattr(attributeMethod, "aptrowAttributeParams"):
+            attributeParams = attributeMethod.aptrowAttributeParams
+            return attributeMethod(self, *[param.getValue(params.get(param.name)) for param in attributeParams])
         else:
-            return attributeMethod.call(self, params)
+            return None
         
 class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
