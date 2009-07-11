@@ -582,6 +582,9 @@ class ZipFile(BaseResource):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Zip file[%s]" % self.fileResource.heading()
     
+    def checkExists(self):
+        self.fileResource.checkExists()
+
     def openZipFile(self):
         """Return on open (read-only) zipfile.ZipFile object."""
         return zipfile.ZipFile(self.fileResource.openBinaryFile(), "r")
@@ -658,6 +661,14 @@ class ZipItem(AttributeResource):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Item %s in %s" % (self.name, self.zipFile.heading())
     
+    def checkExists(self):
+        self.zipFile.checkExists()
+        zipFile = self.zipFile.openZipFile()
+        try:
+            zipInfo = zipFile.getinfo(self.name)
+        except KeyError:
+            raise NoSuchObjectException("Zip item %r not found in %s" % (self.name, self.zipFile.heading()))
+
     def openBinaryFile(self):
         """Return an open file giving direct access to the contents of the zip item.
         io.BytesIO is currently used as an intermediary, because the 'file-like' features
