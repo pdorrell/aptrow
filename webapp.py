@@ -474,11 +474,18 @@ class File(BaseResource):
         """No this resource is not a directory (because it's a file)"""
         return False
     
+    @attribute()
+    def dir(self):
+        """Directory containing file"""
+        return Directory(os.path.dirname(self.path))
+
     def html(self):
         """HTML content for file: show various details, including links to contents
         and to alternative views of the file."""
         fileSize = os.path.getsize(self.path)
         yield "<p>Information about file <b>%s</b>: %s bytes</p>" % (h(self.path), fileSize)
+        directory = self.dir()
+        yield "<p>Containing directory: <a href=\"%s\">%s</a></p>" % (directory.url(), h(directory.path))
         yield "<p><a href =\"%s\">contents</a>" % FileContents(self).url()
         yield " (<a href =\"%s\">text</a>)" % FileContents(self, "text/plain").url()
         yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
