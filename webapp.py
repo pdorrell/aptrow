@@ -125,8 +125,9 @@ class AptrowApp:
         try:
             object = getResourceFromPathAndQuery(pathInfo, queryString)
             object.checkExists()
-            msg = "<p>AppClass sez, you requested <strong>%s</strong> with query string <b>%s</b></p>"
-            self.message = msg % (h(pathInfo), hr(queryString))
+            #msg = "<p>AppClass sez, you requested <strong>%s</strong> with query string <b>%s</b></p>"
+            #self.message = msg % (h(pathInfo), hr(queryString))
+            self.message = ""
             for text in object.page(self): yield text
         except MissingParameterException as exc:
             yield self.not_found("For resource type \"%s\" %s" % (pathInfo, exc.message))
@@ -661,6 +662,9 @@ class ZipItem(AttributeResource):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Item %s in %s" % (self.name, self.zipFile.heading())
     
+    def getZipInfo(self):
+        return self.zipFile.openZipFile().getinfo(self.name)
+    
     def checkExists(self):
         self.zipFile.checkExists()
         zipFile = self.zipFile.openZipFile()
@@ -686,12 +690,25 @@ class ZipItem(AttributeResource):
         zipFile.close()
         return memoryFile
     
+    zipInfoAttributes = "filename date_time compress_type comment extra create_system create_version extract_version reserved flag_bits volume internal_attr external_attr header_offset CRC compress_size file_size".split()
+    
+    def zipInfoHtml(self):
+        zipInfo = self.getZipInfo()
+        buffer = io.StringIO()
+        buffer.write("<h3>Zip Info attributes</h3>")
+        buffer.write("<table>\n")
+        for attr in ZipItem.zipInfoAttributes:
+            buffer.write("<tr><td>%s:</td><td><b>%r</b></td>\n" % (attr, getattr(zipInfo, attr)))
+        buffer.write("</table>\n")
+        return buffer.getvalue()
+    
     def html(self):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
         yield "<p><a href=\"%s\">Content</a>" % FileContents(self, "text/plain").url()
         yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
         yield "</p>"
         yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url()
+        yield self.zipInfoHtml()
 
     @attribute(StringParam("contentType", optional = True))
     def contents(self, contentType = None):
