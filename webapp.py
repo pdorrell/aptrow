@@ -640,10 +640,62 @@ class ZipFile(BaseResource):
             zipItemsTree.addPath(itemName, ZipItem(self, itemName))
         yield zipItemsTree.asHtml()
         
-    @attribute(StringParam("name", optional = True))
+    @attribute(StringParam("name"))
     def item(self, name):
         """Return a named item from this zip file as a ZipItem resource"""
         return ZipItem(self, name)
+    
+    @attribute(StringParam("path"))
+    def dir(self, path):
+        """Return a named item from this zip file as a ZipFileDir resource"""
+        return ZipFileDir(self, path)
+    
+class ZipFileDir(AttributeResource):
+    """A resource representing a directory within a zip file. Considered to exist if the path
+    name ends in '/', and, either (1) a corresponding Zip item exists, or (2) other Zip items exist 
+    with the path as a prefix."""
+    
+    def __init__(self, zipFile, path):
+        self.zipFile = zipFile
+        self.path = path
+    
+    def baseObjectAndParams(self):
+        """This resource is defined as a named 'dir' attribute of the enclosing ZipFile resource."""
+        return (self.zipFile, "dir", {"path": self.path})
+        
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Directory %s in %s" % (self.path, self.zipFile.heading())
+    
+    def checkExists(self):
+        self.zipFile.checkExists()
+        if not self.path.endswith("/"):
+            raise NoSuchObjectException("Invalid Zip dir %s does not end with '/'" % self.path)
+        zipFile = self.zipFile.openZipFile()
+        try:
+            zipInfo = zipFile.getinfo(self.path)
+        except KeyError:
+            childItems = self.getChildItems()
+            if len(childItems) == 0:
+                raise NoSuchObjectException("No item or child items for zip dir %s in %s" 
+                                            % (self.path, self.zipFile.heading()))
+        
+    def getChildItems(self):
+        zipInfos = [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.path)]
+        return [ZipItem(self.zipFile, zipInfo.filename) for zipInfo in zipInfos]
+    
+    def listZipInfosInHtml(self):
+        """Show list of links to zip items within the zip file."""
+        yield "<h3>Items</h3>"
+        yield "<ul>"
+        for childItem in self.getChildItems():
+            yield "<li><a href=\"%s\">%s</a></li>" % (childItem.url(), h(childItem.name))
+        yield "</ul>"
+        
+    def html(self):
+        """HTML content for this resource."""
+        yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
+        for text in self.listZipInfosInHtml(): yield text
         
 class ZipItem(AttributeResource):
     """A resource representing a named item within a zip file. (Note: current implementation
@@ -702,12 +754,18 @@ class ZipItem(AttributeResource):
         buffer.write("</table>\n")
         return buffer.getvalue()
     
+    def asZipFileDir(self):
+        return ZipFileDir(self.zipFile, self.name)
+    
     def html(self):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
         yield "<p><a href=\"%s\">Content</a>" % FileContents(self, "text/plain").url()
         yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
         yield "</p>"
         yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url()
+        if self.name.endswith("/"):
+            zipFileDir = self.asZipFileDir()
+            yield "<p><a href =\"%s\">(as Zip directory)</a> " % zipFileDir.url()
         yield self.zipInfoHtml()
 
     @attribute(StringParam("contentType", optional = True))
