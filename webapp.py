@@ -319,6 +319,15 @@ class Resource:
         else:
             return None
         
+    def viewLink(self, view, currentView):
+        if view == currentView:
+            return view
+        else:
+            return "<a href=\"%s\">%s</a>" % (self.withViewType(view).url(), view)
+            
+    def viewLinksHtml(self, views):
+        return " ".join([self.viewLink(view, self.view) for view in views])
+            
 class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
     from registered resource types."""
@@ -375,14 +384,18 @@ class FileContents(AttributeResource):
 class Directory(BaseResource):
     """A resource representing a directory on the local file system."""
 
-    resourceParams = [StringParam("path")]
+    resourceParams = [StringParam("path"), StringParam("view", optional = True)]
     
-    def __init__(self, path):
+    def __init__(self, path, view = None):
         self.path = os.path.normpath(path)
+        self.view = view or "list"
+        
+    def withViewType(self, view):
+        return Directory(self.path, view)
         
     def urlParams(self):
         """Parameters required to construct the URL for this resource."""
-        return {"path": [self.path]}
+        return {"path": [self.path], "view": [self.view]}
 
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
@@ -410,9 +423,15 @@ class Directory(BaseResource):
     def html(self):
         """HTML content for directory: show lists of files and sub-directories."""
         parentDir = self.parent()
+        yield "<p>Views: %s</p>" % self.viewLinksHtml(["list", "tree"])
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
-        for text in self.listFilesAndDirectoriesInHtml(): yield text
+        if self.view == "list":
+            for text in self.listFilesAndDirectoriesInHtml(): yield text
+        elif self.view == "tree":
+            for text in self.listFullTreeInHtml(): yield text
+        else:
+            yield "<p>Unknown view type <b>%s</b>" % self.view
         
     @attribute()
     def parent(self):
@@ -423,13 +442,29 @@ class Directory(BaseResource):
         else:
             return Directory(parentPath)
         
-    def listFilesAndDirectoriesInHtml(self):
-        """ Show each of files and sub-directories as a list of links to those resources."""
-        path = self.path
-        entryNames = os.listdir(path)
+    def getDirAndFileEntries(self):
+        entryNames = os.listdir(self.path)
         entries = [(name, self.fileEntry(name)) for name in entryNames]
         dirEntries = [(name, entry) for (name, entry) in entries if entry.isDir()]
         fileEntries = [(name, entry) for (name, entry) in entries if not entry.isDir()]
+        return (dirEntries, fileEntries)
+        
+    def listFullTreeInHtml(self):
+        dirEntries, fileEntries = self.getDirAndFileEntries()
+        yield "<ul>"
+        for name, entry in fileEntries:
+            print (entry.heading())
+            yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
+        for name, entry in dirEntries:
+            print (entry.heading())
+            yield "<li><a href = \"%s\">%s</a>" % (entry.url(), h(name))
+            for text in entry.listFullTreeInHtml(): yield text
+            yield "</li>"
+        yield "</ul>"
+        
+    def listFilesAndDirectoriesInHtml(self):
+        """ Show each of files and sub-directories as a list of links to those resources."""
+        dirEntries, fileEntries = self.getDirAndFileEntries()
         if len(dirEntries) > 0:
             yield "<h3>Sub-directories</h3>"
             yield "<ul>"
@@ -568,9 +603,9 @@ class ZipFile(BaseResource):
     
     resourceParams = [ResourceParam("file"), StringParam("view", optional = True)]
 
-    def __init__(self, fileResource, view = "list"):
+    def __init__(self, fileResource, view = None):
         self.fileResource = fileResource
-        self.view = view
+        self.view = view or "list"
         
     def withViewType(self, view):
         return ZipFile(self.fileResource, view)
@@ -599,20 +634,11 @@ class ZipFile(BaseResource):
         finally:
             zipFile.close()
             
-    def viewLinks(self):
-        for view in ["list", "tree"]:
-            if self.view == view:
-                yield " %s" % view
-            else:
-                yield " <a href=\"%s\">%s</a>" % (self.withViewType(view).url(), view)
-            
     def html(self):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
-        yield "<p>Views:"
-        for text in self.viewLinks(): yield text
-        yield "</p>"
+        yield "<p>Views: %s</p>" % self.viewLinksHtml(["list", "tree"])
         if self.view == "list":
             for text in self.listZipInfosInHtml(): yield text
         elif self.view == "tree":
