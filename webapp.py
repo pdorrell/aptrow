@@ -163,7 +163,7 @@ class AptrowQueryParams:
     name and a set of named parameters for each lookup. The lookups are applied first to the base resource, 
     and then in turn to the result of each previous lookup.
     
-    The chain of attribute names is represented by the list of HTML parameters with the key '_attribute'. 
+    The chain of N attribute names is represented by parameters with the key '_<n>' for n = 1 to N. 
     Individual attribute parameters are numbered from 1 up, with the format '_<n>.<name>', where <n> is the 
     number, and <name> is the parameter name (which should also start with an alphabetic character).
     
@@ -172,7 +172,6 @@ class AptrowQueryParams:
     
     def __init__(self, htmlParams):
         self.htmlParams = htmlParams
-        self.attributes = self.htmlParams.get("_attribute")
         
     def getString(self, name):
         """Retrieve an optional base resource parameter by name."""
@@ -188,9 +187,14 @@ class AptrowQueryParams:
     
     def attributesAndParams(self):
         """Extract attribute parameters as a list of pairs of names and parameter dicts."""
-        if self.attributes != None:
-            count = 1
-            for attribute in self.attributes:
+        count = 1
+        finished = False
+        while not finished:
+            attributeKey = "_%s" % count
+            attribute = self.getString(attributeKey)
+            if attribute == None:
+                finished = True
+            else:
                 yield (attribute, self.attributeParams(count))
                 count += 1
                 
@@ -283,11 +287,8 @@ class Resource:
     
     
     def attributeUrlParams(self, attribute, count, params):
-        """Return URL parameters for a single (numbered) attribute lookup as a map.
-        Note that the attribute name has the same key value ('_attribute') independent
-        of the number. So maps in a chain of lookups cannot be merged, instead they 
-        have to be converted to URL query format and then concatenated."""
-        attributeParams = {"_attribute": attribute}
+        """Return URL parameters for a single (numbered) attribute lookup as a map."""
+        attributeParams = {"_%s" % count: attribute}
         for key, value in params.items():
             attributeParams["_%s.%s" % (count, key)] = value
         return attributeParams
