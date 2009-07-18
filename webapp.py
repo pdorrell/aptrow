@@ -44,7 +44,12 @@ def resourceTypeName(name):
         return resourceClass
     return registerResourceClass
 
-class ResourceTypeNotFoundForPathException(Exception):
+class MessageException(Exception):
+    """An exception class whose default string representation is the 'message' attribute."""
+    def __str__(self):
+        return self.message
+
+class ResourceTypeNotFoundForPathException(MessageException):
     """Thrown when looking up a resource type not registered in resourceClasses."""
     def __init__(self, path):
         self.path = path
@@ -72,7 +77,7 @@ def getResource(url):
     else:
         raise Error("Non-local resource URL's not yet implemented (doesn't start with '/'): %s" % localUrl)
     
-class UnknownAttributeException(Exception):
+class UnknownAttributeException(MessageException):
     """Thrown when an attribute name is not valid."""
     def __init__(self, attribute, resource):
         self.attribute = attribute
@@ -142,15 +147,20 @@ class AptrowApp:
         except (NoSuchObjectException, ParameterException) as exception:
             yield self.not_found(exception.message)
             
-class ParameterException(Exception):
+class ParameterException(MessageException):
     """Thrown when a URL parameter is invalid or missing"""
     def __init__(self, message):
         self.message = message
         
-class MissingParameterException(Exception):
+class MissingParameterException(MessageException):
     """Thrown when a required URL parameter is missing"""
     def __init__(self, name = None):
         self.message = "Missing parameter %s" % name
+        
+class UnknownViewTypeException(MessageException):
+    """Thrown when a view type is invalid"""
+    def __init__(self, type = None, theClass = None):
+        self.message = "Unknown view type \"%s\" for class %s" % (type, theClass.__name__)
         
 class View:
     def __init__(self, type, params = {}):
@@ -243,7 +253,7 @@ class AptrowQueryParams:
                     params[key[len("view."):]] = value[0]
             return View(type, params)
     
-class NoSuchObjectException(Exception):
+class NoSuchObjectException(MessageException):
     """Thrown when a Resource has been created and is then later found not to represent a valid resource. 
     Generally thrown by the 'checkExists()' method."""
     def __init__(self, message):
@@ -346,7 +356,7 @@ class Resource:
             for text in self.html(view): yield text
         except BaseException as error:
             traceback.print_exc()
-            yield "<div class =\"aptrowError\">Error: %s</div>" % (hr(error.args),)
+            yield "<div class =\"aptrowError\">Error: %s</div>" % (h(str(error)),)
         yield "</body></html>"
         
     def resolveAttribute(self, attribute, params):
@@ -471,13 +481,12 @@ class Directory(BaseResource):
                                                       view)
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
-        if view.type == "list":
-            for text in self.listFilesAndDirectoriesInHtml(): yield text
-        elif view.type == "tree":
-            for text in self.listFullTreeInHtml(): yield text
+        showFilesAndDirectories = Directory.showFilesAndDirectories.get(view.type)
+        if showFilesAndDirectories:
+            for text in showFilesAndDirectories(self): yield text
         else:
-            yield "<p>Unknown view type <b>%s</b>" % view.type
-        
+            raise UnknownViewTypeException(view.type, Directory)
+            
     @attribute()
     def parent(self):
         """Parent directory"""
@@ -493,8 +502,8 @@ class Directory(BaseResource):
         dirEntries = [(name, entry) for (name, entry) in entries if entry.isDir()]
         fileEntries = [(name, entry) for (name, entry) in entries if not entry.isDir()]
         return (dirEntries, fileEntries)
-        
-    def listFullTreeInHtml(self):
+    
+    def showFilesAndDirectoriesAsTree(self):
         dirEntries, fileEntries = self.getDirAndFileEntries()
         yield "<ul>"
         for name, entry in fileEntries:
@@ -503,11 +512,11 @@ class Directory(BaseResource):
         for name, entry in dirEntries:
             print (entry.heading())
             yield "<li><a href = \"%s\">%s</a>" % (entry.url(), h(name))
-            for text in entry.listFullTreeInHtml(): yield text
+            for text in entry.showFilesAndDirectoriesAsTree(): yield text
             yield "</li>"
         yield "</ul>"
         
-    def listFilesAndDirectoriesInHtml(self):
+    def showFilesAndDirectoriesAsList(self):
         """ Show each of files and sub-directories as a list of links to those resources."""
         dirEntries, fileEntries = self.getDirAndFileEntries()
         if len(dirEntries) > 0:
@@ -523,6 +532,9 @@ class Directory(BaseResource):
                 yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
             yield "</ul>"
             
+    showFilesAndDirectories = {"list": showFilesAndDirectoriesAsList, 
+                               "tree": showFilesAndDirectoriesAsTree}
+    
 @resourceTypeName("file")
 class File(BaseResource):
     """A resource representing a file on the local file system."""
