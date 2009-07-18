@@ -67,7 +67,7 @@ def getResource(url):
         else:
             path = localUrl[:queryStart]
             query = localUrl[queryStart+1:]
-        resource, viewType = getResourceAndViewTypeFromPathAndQuery(path, query)
+        resource, view = getResourceAndViewFromPathAndQuery(path, query)
         return resource
     else:
         raise Error("Non-local resource URL's not yet implemented (doesn't start with '/'): %s" % localUrl)
@@ -79,7 +79,7 @@ class UnknownAttributeException(Exception):
         self.resource = resource
         self.message = "No attribute \"%s\" defined for resource [%s]" % (attribute, resource.heading())
     
-def getResourceAndViewTypeFromPathAndQuery(path, query):
+def getResourceAndViewFromPathAndQuery(path, query):
     """Look up resource object from URL path and query. This includes processing of parameters passed to the
     base resource type, and optionally the processing of attribute parameters, for when one resource is
     defined as an attribute of another. (For example, a FileContents resource is the "contents" attribute
@@ -97,10 +97,10 @@ def getResourceAndViewTypeFromPathAndQuery(path, query):
         if attributeValue == None:
             raise UnknownAttributeException(attribute, object)
         object = attributeValue
-    viewType = aptrowQueryParams.getViewType()
-    if viewType == None and object != None:
-        viewType = object.defaultViewType()
-    return object, viewType
+    view = aptrowQueryParams.getView()
+    if view == None and object != None:
+        view = object.defaultView()
+    return object, view
                     
 class AptrowApp:
     """The main WSGI Aptrow web application. It accepts the URL representing a resource, finds
@@ -127,12 +127,12 @@ class AptrowApp:
         queryString = self.environ['QUERY_STRING']
         print ("queryString = %r" % queryString)
         try:
-            object, viewType = getResourceAndViewTypeFromPathAndQuery(pathInfo, queryString)
+            object, view = getResourceAndViewFromPathAndQuery(pathInfo, queryString)
             object.checkExists()
             #msg = "<p>AppClass sez, you requested <strong>%s</strong> with query string <b>%s</b></p>"
             #self.message = msg % (h(pathInfo), hr(queryString))
             self.message = ""
-            for text in object.page(self, viewType): yield text
+            for text in object.page(self, view): yield text
         except MissingParameterException as exc:
             yield self.not_found("For resource type \"%s\" %s" % (pathInfo, exc.message))
         except UnknownAttributeException as exc:
@@ -152,7 +152,7 @@ class MissingParameterException(Exception):
     def __init__(self, name = None):
         self.message = "Missing parameter %s" % name
         
-class ViewType:
+class View:
     def __init__(self, type, params = {}):
         self.type = type
         self.params = params
@@ -162,7 +162,7 @@ class ViewType:
         return other != None and self.type == other.type and self.params == other.params
     
     def __repr__(self):
-        return "ViewType[%s, %r]" % (self.type, self.params)
+        return "View[%s, %r]" % (self.type, self.params)
     
     def htmlParamsDict(self):
         dict = {}
@@ -232,7 +232,7 @@ class AptrowQueryParams:
                 params[key[len(prefix):]] = value[0]
         return params
     
-    def getViewType(self, defaultType = None):
+    def getView(self, defaultType = None):
         type = self.getString("view")
         if type == None:
             return None
@@ -241,7 +241,7 @@ class AptrowQueryParams:
             for key, value in self.htmlParams.items():
                 if key.startswith("view."):
                     params[key[len("view."):]] = value[0]
-            return ViewType(type, params)
+            return View(type, params)
     
 class NoSuchObjectException(Exception):
     """Thrown when a Resource has been created and is then later found not to represent a valid resource. 
@@ -315,7 +315,7 @@ class Resource:
         """
         pass
     
-    def defaultViewType(self):
+    def defaultView(self):
         return None
     
     def htmlLink(self):
@@ -331,7 +331,7 @@ class Resource:
             attributeParams["_%s.%s" % (count, key)] = value
         return attributeParams
     
-    def page(self, app, viewType):
+    def page(self, app, view):
         """Return the web page for the resource. Default is to return an HTML page
         by calling the resource's 'html()' method. (Override this method entirely
         if something else is required. Note that currently this application does
@@ -343,7 +343,7 @@ class Resource:
         yield app.message
         yield "<h2>%s</h2>" % h(heading)
         try:
-            for text in self.html(viewType): yield text
+            for text in self.html(view): yield text
         except BaseException as error:
             traceback.print_exc()
             yield "<div class =\"aptrowError\">Error: %s</div>" % (hr(error.args),)
@@ -358,22 +358,22 @@ class Resource:
         else:
             return None
         
-    def viewLink(self, viewType, description, currentViewType):
-        if viewType == currentViewType:
+    def viewLink(self, view, description, currentView):
+        if view == currentView:
             return description
         else:
-            return "<a href=\"%s\">%s</a>" % (self.url(viewType = viewType), description)
+            return "<a href=\"%s\">%s</a>" % (self.url(view = view), description)
             
-    def viewLinksHtml(self, viewTypesAndDescriptions, currentViewType):
-        print ("viewTypesAndDescriptions = %r" % viewTypesAndDescriptions)
-        return " ".join([self.viewLink(viewType, description, currentViewType) 
-                         for viewType, description in viewTypesAndDescriptions])
+    def viewLinksHtml(self, viewsAndDescriptions, currentView):
+        print ("viewsAndDescriptions = %r" % viewsAndDescriptions)
+        return " ".join([self.viewLink(view, description, currentView) 
+                         for view, description in viewsAndDescriptions])
             
 class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
     from registered resource types."""
     
-    def url(self, attributesAndParams = [], viewType = None):
+    def url(self, attributesAndParams = [], view = None):
         """ Construct URL for this resource, from registered resource type and parameter
         values from urlParams(). Any supplied attribute lookups are added to the end of the URL."""
         urlString = "/%s?%s" % (self.__class__.resourcePath, urllib.parse.urlencode(self.urlParams(), True))
@@ -381,8 +381,8 @@ class BaseResource(Resource):
         for attribute,params in attributesAndParams:
             urlString += "&%s" % urllib.parse.urlencode(self.attributeUrlParams(attribute, count, params))
             count += 1
-        if viewType != None:
-            urlString += "&%s" % urllib.parse.urlencode(viewType.htmlParamsDict())
+        if view != None:
+            urlString += "&%s" % urllib.parse.urlencode(view.htmlParamsDict())
         return urlString
     
 class AttributeResource(Resource):
@@ -414,7 +414,7 @@ class FileContents(AttributeResource):
         """This resource exists if the file resource exists."""
         self.file.checkExists()
     
-    def page(self, app, viewType):
+    def page(self, app, view):
         """Override default page() method to send contents directly with content type (if specified)."""
         response_headers = []
         if self.contentType != None:
@@ -459,24 +459,24 @@ class Directory(BaseResource):
         else:
             return File(entryPath)
         
-    viewTypesAndDescriptions = [(ViewType(type), type) for type in ["list", "tree"]]
+    viewsAndDescriptions = [(View(type), type) for type in ["list", "tree"]]
     
-    def defaultViewType(self):
-        return ViewType("list")
+    def defaultView(self):
+        return View("list")
 
-    def html(self, viewType):
+    def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""
         parentDir = self.parent()
-        yield "<p>Views: %s</p>" % self.viewLinksHtml(Directory.viewTypesAndDescriptions, 
-                                                      viewType)
+        yield "<p>Views: %s</p>" % self.viewLinksHtml(Directory.viewsAndDescriptions, 
+                                                      view)
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
-        if viewType.type == "list":
+        if view.type == "list":
             for text in self.listFilesAndDirectoriesInHtml(): yield text
-        elif viewType.type == "tree":
+        elif view.type == "tree":
             for text in self.listFullTreeInHtml(): yield text
         else:
-            yield "<p>Unknown view type <b>%s</b>" % viewType.type
+            yield "<p>Unknown view type <b>%s</b>" % view.type
         
     @attribute()
     def parent(self):
@@ -560,7 +560,7 @@ class File(BaseResource):
         """Directory containing file"""
         return Directory(os.path.dirname(self.path))
 
-    def html(self, viewType):
+    def html(self, view):
         """HTML content for file: show various details, including links to contents
         and to alternative views of the file."""
         fileSize = os.path.getsize(self.path)
@@ -599,7 +599,7 @@ class String(BaseResource):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "String: %r" % self.value
     
-    def html(self, viewType):
+    def html(self, view):
         """HTML content for string: show it in bold."""
         yield "<p>String: <b>%s</b></p>" % h(self.value)
         
@@ -675,22 +675,22 @@ class ZipFile(BaseResource):
         finally:
             zipFile.close()
             
-    viewTypesAndDescriptions = [(ViewType(type), type) for type in ["list", "tree"]]
+    viewsAndDescriptions = [(View(type), type) for type in ["list", "tree"]]
             
-    def defaultViewType(self):
-        return ViewType("list")
+    def defaultView(self):
+        return View("list")
 
-    def html(self, viewType):
+    def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
-        yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFile.viewTypesAndDescriptions, viewType)
-        if viewType.type == "list":
+        yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFile.viewsAndDescriptions, view)
+        if view.type == "list":
             for text in self.listZipInfosInHtml(): yield text
-        elif viewType.type == "tree":
+        elif view.type == "tree":
             for text in self.listZipItemsTreeInHtml(): yield text
         else:
-            yield "<p>Unknown view type <b>%s</b>" % viewType.type
+            yield "<p>Unknown view type <b>%s</b>" % view.type
 
     def listZipInfosInHtml(self):
         """Show list of links to zip items within the zip file."""
@@ -764,7 +764,7 @@ class ZipFileDir(AttributeResource):
             yield "<li><a href=\"%s\">%s</a></li>" % (childItem.url(), h(childItem.name))
         yield "</ul>"
         
-    def html(self, viewType):
+    def html(self, view):
         """HTML content for this resource."""
         yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
         for text in self.listZipInfosInHtml(): yield text
@@ -829,7 +829,7 @@ class ZipItem(AttributeResource):
     def asZipFileDir(self):
         return ZipFileDir(self.zipFile, self.name)
     
-    def html(self, viewType):
+    def html(self, view):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
         yield "<p><a href=\"%s\">Content</a>" % FileContents(self, "text/plain").url()
         yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
