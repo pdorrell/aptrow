@@ -159,8 +159,8 @@ class MissingParameterException(MessageException):
         
 class UnknownViewTypeException(MessageException):
     """Thrown when a view type is invalid"""
-    def __init__(self, type = None, theClass = None):
-        self.message = "Unknown view type \"%s\" for class %s" % (type, theClass.__name__)
+    def __init__(self, type = None, className = None):
+        self.message = "Unknown view type \"%s\" for class %s" % (type, className)
         
 class View:
     def __init__(self, type, params = {}):
@@ -182,12 +182,22 @@ class View:
             dict["view.%s" % key] = value
         return dict
     
-    def getMethodByType(self, methodMap, resource):
-        method = methodMap.get(self.type)
-        if method:
-            return method
+class MethodsByViewType:
+    """A dictionary of methods retrieved by view type. 
+    Throws UnknownViewTypeException if view type is unknown."""
+    def __init__(self, resourceClassName):
+        self.resourceClassName = resourceClassName
+        self.methods = {}
+        
+    def __setitem__(self, key, value):
+        self.methods[key] = value
+    
+    def __getitem__(self, key):
+        value = self.methods.get(key)
+        if value == None:
+            raise UnknownViewTypeException(key, self.resourceClassName)
         else:
-            raise UnknownViewTypeException(self.type, resource.__class__)
+            return value
   
 class AptrowQueryParams:
     """An object wrapping URL parameters, and presenting them as follows:
@@ -488,8 +498,7 @@ class Directory(BaseResource):
                                                       view)
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
-        showFilesAndDirectories = view.getMethodByType(Directory.showFilesAndDirectories, self)
-        for text in showFilesAndDirectories(self): yield text
+        for text in Directory.showFilesAndDirectories[view.type](self): yield text
             
     @attribute()
     def parent(self):
@@ -507,6 +516,8 @@ class Directory(BaseResource):
         fileEntries = [(name, entry) for (name, entry) in entries if not entry.isDir()]
         return (dirEntries, fileEntries)
     
+    showFilesAndDirectories = MethodsByViewType("Directory")
+    
     def showFilesAndDirectoriesAsTree(self):
         dirEntries, fileEntries = self.getDirAndFileEntries()
         yield "<ul>"
@@ -519,6 +530,8 @@ class Directory(BaseResource):
             for text in entry.showFilesAndDirectoriesAsTree(): yield text
             yield "</li>"
         yield "</ul>"
+        
+    showFilesAndDirectories["tree"] = showFilesAndDirectoriesAsTree
         
     def showFilesAndDirectoriesAsList(self):
         """ Show each of files and sub-directories as a list of links to those resources."""
@@ -536,8 +549,7 @@ class Directory(BaseResource):
                 yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
             yield "</ul>"
             
-    showFilesAndDirectories = {"list": showFilesAndDirectoriesAsList, 
-                               "tree": showFilesAndDirectoriesAsTree}
+    showFilesAndDirectories["list"] = showFilesAndDirectoriesAsList
     
 @resourceTypeName("file")
 class File(BaseResource):
