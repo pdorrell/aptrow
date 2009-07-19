@@ -763,11 +763,16 @@ class ZipFile(BaseResource):
 class ZipFileDir(AttributeResource):
     """A resource representing a directory within a zip file. Considered to exist if the path
     name ends in '/', and, either (1) a corresponding Zip item exists, or (2) other Zip items exist 
-    with the path as a prefix."""
+    with the path as a prefix. The root directory is represented by '/', even though for matching
+    purposes, it is really ''."""
     
     def __init__(self, zipFile, path):
         self.zipFile = zipFile
         self.path = path
+        self.matchPath = "" if path == "/" else path
+        
+    def isRoot(self):
+        return self.path == "/"
     
     def baseObjectAndParams(self):
         """This resource is defined as a named 'dir' attribute of the enclosing ZipFile resource."""
@@ -779,7 +784,7 @@ class ZipFileDir(AttributeResource):
     
     def checkExists(self):
         self.zipFile.checkExists()
-        if not self.path.endswith("/"):
+        if not (self.isRoot() or self.path.endswith("/")):
             raise NoSuchObjectException("Invalid Zip dir %s does not end with '/'" % self.path)
         zipFile = self.zipFile.openZipFile()
         try:
@@ -793,14 +798,17 @@ class ZipFileDir(AttributeResource):
     @attribute()
     def parent(self):
         """Parent directory"""
-        previousSlashPos = self.path[:-1].rfind("/")
-        if previousSlashPos == -1:
+        if self.isRoot():
             return None
         else:
-            return ZipFileDir(self.zipFile, self.path[0:previousSlashPos+1])
+            previousSlashPos = self.path[:-1].rfind("/")
+            if previousSlashPos == -1:
+                return ZipFileDir(self.zipFile, "/")
+            else:
+                return ZipFileDir(self.zipFile, self.path[0:previousSlashPos+1])
         
     def getChildItems(self):
-        zipInfos = [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.path)]
+        zipInfos = [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.matchPath)]
         return [ZipItem(self.zipFile, zipInfo.filename) for zipInfo in zipInfos]
     
     def showZipItemsAsList(self):
@@ -816,7 +824,8 @@ class ZipFileDir(AttributeResource):
         yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
         parentDir = self.parent()
         if parentDir:
-            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
+            parentPath = parentDir.path
+            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentPath)
         for text in self.showZipItemsAsList(): yield text
         
 class ZipItem(AttributeResource):
