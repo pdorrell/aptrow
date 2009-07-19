@@ -502,9 +502,9 @@ class Directory(BaseResource):
 
     def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""
-        parentDir = self.parent()
         yield "<p>Views: %s</p>" % self.viewLinksHtml(Directory.viewsAndDescriptions, 
                                                       view)
+        parentDir = self.parent()
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(view = view), parentDir.path)
         for text in self.showFilesAndDirectories[view.type](self, view = view): yield text
@@ -790,6 +790,15 @@ class ZipFileDir(AttributeResource):
                 raise NoSuchObjectException("No item or child items for zip dir %s in %s" 
                                             % (self.path, self.zipFile.heading()))
         
+    @attribute()
+    def parent(self):
+        """Parent directory"""
+        previousSlashPos = self.path[:-1].rfind("/")
+        if previousSlashPos == -1:
+            return None
+        else:
+            return ZipFileDir(self.zipFile, self.path[0:previousSlashPos+1])
+        
     def getChildItems(self):
         zipInfos = [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.path)]
         return [ZipItem(self.zipFile, zipInfo.filename) for zipInfo in zipInfos]
@@ -805,6 +814,9 @@ class ZipFileDir(AttributeResource):
     def html(self, view):
         """HTML content for this resource."""
         yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
+        parentDir = self.parent()
+        if parentDir:
+            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
         for text in self.showZipItemsAsList(): yield text
         
 class ZipItem(AttributeResource):
