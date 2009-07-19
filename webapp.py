@@ -199,6 +199,11 @@ class MethodsByViewType:
         else:
             return value
         
+def byViewMethod(className):
+    def decorator(func):
+        return MethodsByViewType(className)
+    return decorator
+
 def byView(viewType, methodsByViewType):
     """Decorator for methods to be looked up by view type"""
     def decorator(func):
@@ -505,7 +510,7 @@ class Directory(BaseResource):
                                                       view)
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
-        for text in Directory.showFilesAndDirectories[view.type](self): yield text
+        for text in self.showFilesAndDirectories[view.type](self, view = view): yield text
             
     @attribute()
     def parent(self):
@@ -523,10 +528,12 @@ class Directory(BaseResource):
         fileEntries = [(name, entry) for (name, entry) in entries if not entry.isDir()]
         return (dirEntries, fileEntries)
     
-    showFilesAndDirectories = MethodsByViewType("Directory")
+    @byViewMethod("Directory")
+    def showFilesAndDirectories(self):
+        pass
     
     @byView("tree", showFilesAndDirectories)
-    def showFilesAndDirectoriesAsTree(self):
+    def showFilesAndDirectoriesAsTree(self, view = None):
         dirEntries, fileEntries = self.getDirAndFileEntries()
         yield "<ul>"
         for name, entry in fileEntries:
@@ -540,7 +547,7 @@ class Directory(BaseResource):
         yield "</ul>"
         
     @byView("list", showFilesAndDirectories)
-    def showFilesAndDirectoriesAsList(self):
+    def showFilesAndDirectoriesAsList(self, view = None):
         """ Show each of files and sub-directories as a list of links to those resources."""
         dirEntries, fileEntries = self.getDirAndFileEntries()
         if len(dirEntries) > 0:
