@@ -159,8 +159,8 @@ class MissingParameterException(MessageException):
         
 class UnknownViewTypeException(MessageException):
     """Thrown when a view type is invalid"""
-    def __init__(self, type = None, className = None):
-        self.message = "Unknown view type \"%s\" for class %s" % (type, className)
+    def __init__(self, type):
+        self.message = "Unknown view type \"%s\"" % type
         
 class View:
     def __init__(self, type, params = {}):
@@ -185,8 +185,7 @@ class View:
 class MethodsByViewType:
     """A dictionary of methods retrieved by view type. 
     Throws UnknownViewTypeException if view type is unknown."""
-    def __init__(self, resourceClassName):
-        self.resourceClassName = resourceClassName
+    def __init__(self):
         self.methods = {}
         
     def __setitem__(self, key, value):
@@ -195,14 +194,12 @@ class MethodsByViewType:
     def __getitem__(self, key):
         value = self.methods.get(key)
         if value == None:
-            raise UnknownViewTypeException(key, self.resourceClassName)
+            raise UnknownViewTypeException(key)
         else:
             return value
         
-def byViewMethod(className):
-    def decorator(func):
-        return MethodsByViewType(className)
-    return decorator
+def byViewMethod(func):
+    return MethodsByViewType()
 
 def byView(viewType, methodsByViewType):
     """Decorator for methods to be looked up by view type"""
@@ -528,7 +525,7 @@ class Directory(BaseResource):
         fileEntries = [(name, entry) for (name, entry) in entries if not entry.isDir()]
         return (dirEntries, fileEntries)
     
-    @byViewMethod("Directory")
+    @byViewMethod
     def showFilesAndDirectories(self):
         pass
     
@@ -727,7 +724,7 @@ class ZipFile(BaseResource):
         yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFile.viewsAndDescriptions, view)
         for text in self.showZipItems[view.type](self): yield text
             
-    @byViewMethod("ZipFile")
+    @byViewMethod
     def showZipItems(self):
         pass
 
