@@ -725,13 +725,13 @@ class ZipFile(BaseResource):
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
         yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFile.viewsAndDescriptions, view)
-        if view.type == "list":
-            for text in self.showZipItemsAsList(): yield text
-        elif view.type == "tree":
-            for text in self.showZipItemsAsTree(): yield text
-        else:
-            yield "<p>Unknown view type <b>%s</b>" % view.type
+        for text in self.showZipItems[view.type](self): yield text
+            
+    @byViewMethod("ZipFile")
+    def showZipItems(self):
+        pass
 
+    @byView("list", showZipItems)
     def showZipItemsAsList(self):
         """Show list of links to zip items within the zip file."""
         zipInfos = self.getZipInfos()
@@ -742,6 +742,7 @@ class ZipFile(BaseResource):
             yield "<li><a href=\"%s\">%s</a></li>" % (ZipItem(self, itemName).url(), h(itemName))
         yield "</ul>"
         
+    @byView("tree", showZipItems)
     def showZipItemsAsTree(self):
         """Show list of links to zip items as a tree."""
         zipInfos = self.getZipInfos()
