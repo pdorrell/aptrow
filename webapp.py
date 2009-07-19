@@ -181,6 +181,13 @@ class View:
         for key, value in self.params.items():
             dict["view.%s" % key] = value
         return dict
+    
+    def getMethodByType(self, methodMap, resource):
+        method = methodMap.get(self.type)
+        if method:
+            return method
+        else:
+            raise UnknownViewTypeException(self.type, resource.__class__)
   
 class AptrowQueryParams:
     """An object wrapping URL parameters, and presenting them as follows:
@@ -481,11 +488,8 @@ class Directory(BaseResource):
                                                       view)
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
-        showFilesAndDirectories = Directory.showFilesAndDirectories.get(view.type)
-        if showFilesAndDirectories:
-            for text in showFilesAndDirectories(self): yield text
-        else:
-            raise UnknownViewTypeException(view.type, Directory)
+        showFilesAndDirectories = view.getMethodByType(Directory.showFilesAndDirectories, self)
+        for text in showFilesAndDirectories(self): yield text
             
     @attribute()
     def parent(self):
@@ -698,13 +702,13 @@ class ZipFile(BaseResource):
         yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
         yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFile.viewsAndDescriptions, view)
         if view.type == "list":
-            for text in self.listZipInfosInHtml(): yield text
+            for text in self.showZipItemsAsList(): yield text
         elif view.type == "tree":
-            for text in self.listZipItemsTreeInHtml(): yield text
+            for text in self.showZipItemsAsTree(): yield text
         else:
             yield "<p>Unknown view type <b>%s</b>" % view.type
 
-    def listZipInfosInHtml(self):
+    def showZipItemsAsList(self):
         """Show list of links to zip items within the zip file."""
         zipInfos = self.getZipInfos()
         yield "<h3>Items</h3>"
@@ -714,7 +718,7 @@ class ZipFile(BaseResource):
             yield "<li><a href=\"%s\">%s</a></li>" % (ZipItem(self, itemName).url(), h(itemName))
         yield "</ul>"
         
-    def listZipItemsTreeInHtml(self):
+    def showZipItemsAsTree(self):
         """Show list of links to zip items as a tree."""
         zipInfos = self.getZipInfos()
         yield "<h3>Items Tree</h3>"
@@ -768,7 +772,7 @@ class ZipFileDir(AttributeResource):
         zipInfos = [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.path)]
         return [ZipItem(self.zipFile, zipInfo.filename) for zipInfo in zipInfos]
     
-    def listZipInfosInHtml(self):
+    def showZipItemsAsList(self):
         """Show list of links to zip items within the zip file."""
         yield "<h3>Items</h3>"
         yield "<ul>"
@@ -779,7 +783,7 @@ class ZipFileDir(AttributeResource):
     def html(self, view):
         """HTML content for this resource."""
         yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
-        for text in self.listZipInfosInHtml(): yield text
+        for text in self.showZipItemsAsList(): yield text
         
 class ZipItem(AttributeResource):
     """A resource representing a named item within a zip file. (Note: current implementation
