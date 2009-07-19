@@ -198,6 +198,13 @@ class MethodsByViewType:
             raise UnknownViewTypeException(key, self.resourceClassName)
         else:
             return value
+        
+def byView(viewType, methodsByViewType):
+    """Decorator for methods to be looked up by view type"""
+    def decorator(func):
+        methodsByViewType[viewType] = func
+        return func
+    return decorator
   
 class AptrowQueryParams:
     """An object wrapping URL parameters, and presenting them as follows:
@@ -518,6 +525,7 @@ class Directory(BaseResource):
     
     showFilesAndDirectories = MethodsByViewType("Directory")
     
+    @byView("tree", showFilesAndDirectories)
     def showFilesAndDirectoriesAsTree(self):
         dirEntries, fileEntries = self.getDirAndFileEntries()
         yield "<ul>"
@@ -531,8 +539,7 @@ class Directory(BaseResource):
             yield "</li>"
         yield "</ul>"
         
-    showFilesAndDirectories["tree"] = showFilesAndDirectoriesAsTree
-        
+    @byView("list", showFilesAndDirectories)
     def showFilesAndDirectoriesAsList(self):
         """ Show each of files and sub-directories as a list of links to those resources."""
         dirEntries, fileEntries = self.getDirAndFileEntries()
@@ -548,8 +555,6 @@ class Directory(BaseResource):
             for name, entry in fileEntries:
                 yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
             yield "</ul>"
-            
-    showFilesAndDirectories["list"] = showFilesAndDirectoriesAsList
     
 @resourceTypeName("file")
 class File(BaseResource):
