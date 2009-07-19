@@ -509,7 +509,7 @@ class Directory(BaseResource):
         yield "<p>Views: %s</p>" % self.viewLinksHtml(Directory.viewsAndDescriptions, 
                                                       view)
         if parentDir:
-            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentDir.path)
+            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(view = view), parentDir.path)
         for text in self.showFilesAndDirectories[view.type](self, view = view): yield text
             
     @attribute()
@@ -541,7 +541,7 @@ class Directory(BaseResource):
             yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
         for name, entry in dirEntries:
             print (entry.heading())
-            yield "<li><a href = \"%s\">%s</a>" % (entry.url(), h(name))
+            yield "<li><a href = \"%s\">%s</a>" % (entry.url(view = view), h(name))
             for text in entry.showFilesAndDirectoriesAsTree(): yield text
             yield "</li>"
         yield "</ul>"
@@ -554,7 +554,7 @@ class Directory(BaseResource):
             yield "<h3>Sub-directories</h3>"
             yield "<ul>"
             for name, entry in dirEntries:
-                yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
+                yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(view = view), h(name))
             yield "</ul>"
         if len(fileEntries) > 0:
             yield "<h3>Files</h3>"
