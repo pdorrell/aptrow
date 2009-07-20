@@ -425,13 +425,12 @@ class AttributeResource(Resource):
     """Base class for Resource classes representing resources which are constructed as attributes
     of other resources. """
     
-    def url(self, attributesAndParams = []):
+    def url(self, attributesAndParams = [], view = None):
         """Construct a URL for this resource, by determining the details for the base object and
         the attribute parameters used to look up this object, then append any additional supplied
         attribute lookups before creating the full URL."""
         baseObject, attribute, params = self.baseObjectAndParams()
-        return baseObject.url([(attribute, params)] + attributesAndParams)
-        return self.urlFromBaseObject(attributesAndParams)
+        return baseObject.url([(attribute, params)] + attributesAndParams, view = view)
         
 class FileContents(AttributeResource):
     """A resource representing the contents of a file, to be returned directly
@@ -795,6 +794,9 @@ class ZipFileDir(AttributeResource):
                 raise NoSuchObjectException("No item or child items for zip dir %s in %s" 
                                             % (self.path, self.zipFile.heading()))
         
+    def defaultView(self):
+        return View("list")
+
     @attribute()
     def parent(self):
         """Parent directory"""
@@ -806,12 +808,26 @@ class ZipFileDir(AttributeResource):
                 return ZipFileDir(self.zipFile, "/")
             else:
                 return ZipFileDir(self.zipFile, self.path[0:previousSlashPos+1])
+            
+    def getZipInfos(self):
+        return [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.matchPath)]
         
     def getChildItems(self):
-        zipInfos = [zipInfo for zipInfo in self.zipFile.getZipInfos() if zipInfo.filename.startswith(self.matchPath)]
-        return [ZipItem(self.zipFile, zipInfo.filename) for zipInfo in zipInfos]
+        return [ZipItem(self.zipFile, zipInfo.filename) for zipInfo in self.getZipInfos()]
     
-    def showZipItemsAsList(self):
+    @attribute(StringParam("name"))
+    def item(self, name):
+        """Return a named item from this ZipFileDir as a ZipItem resource"""
+        return ZipItem(self.zipFile, self.path + name)
+    
+    viewsAndDescriptions = [(View(type), type) for type in ["list", "tree"]]
+    
+    @byViewMethod
+    def showZipItems(self):
+        pass
+
+    @byView("list", showZipItems)
+    def showZipItemsAsList(self, view = None):
         """Show list of links to zip items within the zip file."""
         yield "<h3>Items</h3>"
         yield "<ul>"
@@ -819,14 +835,30 @@ class ZipFileDir(AttributeResource):
             yield "<li><a href=\"%s\">%s</a></li>" % (childItem.url(), h(childItem.name))
         yield "</ul>"
         
+    @byView("tree", showZipItems)
+    def showZipItemsAsTree(self, view = None):
+        yield "<h3>Items (Tree)</h3>"
+        yield "<ul>"
+        zipItemsTree = ZipItemsTree()
+        pathLength = len(self.path)
+        for zipInfo in self.getZipInfos():
+            itemName = zipInfo.filename[pathLength:]
+            if itemName != "":
+                zipItemsTree.addPath(itemName, ZipItem(self, itemName))
+        yield zipItemsTree.asHtml()
+        yield "</ul>"
+        
+        
     def html(self, view):
         """HTML content for this resource."""
+        yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFileDir.viewsAndDescriptions, 
+                                                      view)
         yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
         parentDir = self.parent()
         if parentDir:
             parentPath = parentDir.path
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentPath)
-        for text in self.showZipItemsAsList(): yield text
+        for text in self.showZipItems[view.type](self): yield text
         
 class ZipItem(AttributeResource):
     """A resource representing a named item within a zip file. (Note: current implementation
