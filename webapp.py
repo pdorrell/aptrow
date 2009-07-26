@@ -175,6 +175,12 @@ class View:
         self.depth = self.params.get("depth")
         if self.depth != None:
             self.depth = int(self.depth)
+            
+    def depthLessOne(self):
+        if self.depth == None:
+            return None
+        else:
+            return self.depth-1
         
     def __eq__(self, other):
         return other != None and self.type == other.type and self.params == other.params
@@ -412,6 +418,19 @@ class Resource:
         return " ".join([self.viewLink(view, description, currentView) 
                          for view, description in viewsAndDescriptions])
             
+    def listAndTreeViewLinks(self, view):
+        """Common list of view types: list or tree with optional depths"""
+        maxDepths = 4
+        if view.type == "tree" and view.depth != None:
+            maxDepths = view.depth+2
+        return "".join([self.viewLink(View("list"), "list", view), 
+                        " ", 
+                        self.viewLink(View("tree"), "tree", view), 
+                        "(depth: "] +
+                       spacedList([self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view)
+                                   for depth in range(1, maxDepths+1)]) +
+                       [")"])
+
 class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
     from registered resource types."""
@@ -504,21 +523,9 @@ class Directory(BaseResource):
     def defaultView(self):
         return View("list")
     
-    def viewLinks(self, view):
-        maxDepths = 4
-        if view.type == "tree" and view.depth != None:
-            maxDepths = view.depth+2
-        return "".join([self.viewLink(View("list"), "list", view), 
-                        " ", 
-                        self.viewLink(View("tree"), "tree", view), 
-                        "(depth: "] +
-                       spacedList([self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view)
-                                   for depth in range(1, maxDepths+1)]) +
-                       [")"])
-
     def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""
-        yield "<p>Views: %s</p>" % self.viewLinks(view)
+        yield "<p>Views: %s</p>" % self.listAndTreeViewLinks(view)
         parentDir = self.parent()
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(view = view), parentDir.path)
@@ -545,10 +552,9 @@ class Directory(BaseResource):
         pass
     
     @byView("tree", showFilesAndDirectories)
-    def showFilesAndDirectoriesAsTree(self, view, depthParam = None):
-        if depthParam == None:
-            depthParam = [view.depth]
-        depth = depthParam[0]
+    def showFilesAndDirectoriesAsTree(self, view, depth = None):
+        if depth == None:
+            depth = view.depth
         dirEntries, fileEntries = self.getDirAndFileEntries()
         yield "<ul>"
         for name, entry in fileEntries:
@@ -558,7 +564,7 @@ class Directory(BaseResource):
             print (entry.heading())
             yield "<li><a href = \"%s\">%s</a>" % (entry.url(view = view), h(name))
             if depth == None or depth > 1:
-                for text in entry.showFilesAndDirectoriesAsTree(view, [depth-1 if depth else None]): 
+                for text in entry.showFilesAndDirectoriesAsTree(view, view.depthLessOne()): 
                     yield text
             else:
                 yield " ..."
