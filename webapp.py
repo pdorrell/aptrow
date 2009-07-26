@@ -964,6 +964,31 @@ class ZipItem(AttributeResource):
     def contents(self, contentType = None):
         """Return contents of zip item with optional content type"""
         return FileContents(self, contentType)
+    
+@resourceTypeName("aptrow")
+class AptrowResource(BaseResource):
+    """A resource representing the Aptrow application itself"""
+    
+    resourceParams = []
+    
+    def __init__(self):
+        pass
+    
+    def urlParams(self):
+        return {}
+    
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Aptrow"
+    
+    def html(self, view):
+        yield "<p>Information about the Aptrow application"
+        yield "<h2>Resource types</h2>"
+        yield "<table><thead><tr><td>Type</td><td>Python Class</td></tr></thead>"
+        yield "<tbody>"
+        for resourceType, resourceClass in resourceClasses.items():
+            yield "<tr><td>%s</td><td>%s</td></tr>" % (h(resourceType), h(resourceClass.__name__))
+        yield "</tbody></table>"
 
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
