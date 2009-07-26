@@ -505,12 +505,15 @@ class Directory(BaseResource):
         return View("list")
     
     def viewLinks(self, view):
+        maxDepths = 4
+        if view.type == "tree" and view.depth != None:
+            maxDepths = view.depth+2
         return "".join([self.viewLink(View("list"), "list", view), 
                         " ", 
                         self.viewLink(View("tree"), "tree", view), 
                         "(depth: "] +
                        spacedList([self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view)
-                                   for depth in [1, 2, 3]]) +
+                                   for depth in range(1, maxDepths+1)]) +
                        [")"])
 
     def html(self, view):
