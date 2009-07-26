@@ -987,8 +987,30 @@ class AptrowResource(BaseResource):
         yield "<table><thead><tr><td>Type</td><td>Python Class</td></tr></thead>"
         yield "<tbody>"
         for resourceType, resourceClass in resourceClasses.items():
-            yield "<tr><td>%s</td><td>%s</td></tr>" % (h(resourceType), h(resourceClass.__name__))
+            yield "<tr><td><a href=\"%s\">%s</a></td><td>%s</td></tr>" % (ResourceTypeResource(resourceType).url(), 
+                                                                          h(resourceType), h(resourceClass.__name__))
         yield "</tbody></table>"
+        
+@resourceTypeName("resourceType")
+class ResourceTypeResource(BaseResource):
+    resourceParams = [StringParam("type")]
+    
+    def __init__(self, type):
+        self.type = type
+        
+    def urlParams(self):
+        return {"type": [self.type]}
+        
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Aptrow Resource Type %s" % self.type
+    
+    def checkExists(self):
+        if self.type not in resourceClasses:
+            raise NoSuchObjectException ("No such Aptrow resource type: %r" % self.type)
+    
+    def html(self, view):
+        yield "<p>Information about Aptrow resource type %s</p>" % self.type
 
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
