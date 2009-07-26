@@ -31,6 +31,12 @@ def hr(value):
     """ HTML escape %r version of object description """
     return h(value.__repr__())
 
+def spacedList(list):
+    newList = [" "] * (len(list)*2-1)
+    for i, item in enumerate (list):
+        newList[i*2] = item
+    return newList
+
 """ Mapping from resource types """
 resourceClasses = {}
 
@@ -126,7 +132,7 @@ class AptrowApp:
         """Main WSGI method to yield content of requested web page. Looks up resource from URL, 
         and then calls resouce "page" method to render the web page."""
         pathInfo = self.environ['PATH_INFO']
-        print ("pathInfo = %r" % pathInfo)
+        # print ("pathInfo = %r" % pathInfo)
         if pathInfo.startswith("/"):
             pathInfo = pathInfo[1:]
         queryString = self.environ['QUERY_STRING']
@@ -166,9 +172,11 @@ class View:
     def __init__(self, type, params = {}):
         self.type = type
         self.params = params
+        self.depth = self.params.get("depth")
+        if self.depth != None:
+            self.depth = int(self.depth)
         
     def __eq__(self, other):
-        print("Is %r equal to %r ? " % (self, other))
         return other != None and self.type == other.type and self.params == other.params
     
     def __repr__(self):
@@ -396,12 +404,11 @@ class Resource:
         
     def viewLink(self, view, description, currentView):
         if view == currentView:
-            return description
+            return h(description)
         else:
-            return "<a href=\"%s\">%s</a>" % (self.url(view = view), description)
+            return "<a href=\"%s\">%s</a>" % (self.url(view = view), h(description))
             
     def viewLinksHtml(self, viewsAndDescriptions, currentView):
-        print ("viewsAndDescriptions = %r" % viewsAndDescriptions)
         return " ".join([self.viewLink(view, description, currentView) 
                          for view, description in viewsAndDescriptions])
             
@@ -494,19 +501,25 @@ class Directory(BaseResource):
         else:
             return File(entryPath)
         
-    viewsAndDescriptions = [(View(type), type) for type in ["list", "tree"]]
-    
     def defaultView(self):
         return View("list")
+    
+    def viewLinks(self, view):
+        return "".join([self.viewLink(View("list"), "list", view), 
+                        " ", 
+                        self.viewLink(View("tree"), "tree", view), 
+                        "(depth: "] +
+                       spacedList([self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view)
+                                   for depth in [1, 2, 3]]) +
+                       [")"])
 
     def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""
-        yield "<p>Views: %s</p>" % self.viewLinksHtml(Directory.viewsAndDescriptions, 
-                                                      view)
+        yield "<p>Views: %s</p>" % self.viewLinks(view)
         parentDir = self.parent()
         if parentDir:
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(view = view), parentDir.path)
-        for text in self.showFilesAndDirectories[view.type](self, view = view): yield text
+        for text in self.showFilesAndDirectories[view.type](self, view): yield text
             
     @attribute()
     def parent(self):
@@ -529,7 +542,10 @@ class Directory(BaseResource):
         pass
     
     @byView("tree", showFilesAndDirectories)
-    def showFilesAndDirectoriesAsTree(self, view = None):
+    def showFilesAndDirectoriesAsTree(self, view, depthParam = None):
+        if depthParam == None:
+            depthParam = [view.depth]
+        depth = depthParam[0]
         dirEntries, fileEntries = self.getDirAndFileEntries()
         yield "<ul>"
         for name, entry in fileEntries:
@@ -538,12 +554,16 @@ class Directory(BaseResource):
         for name, entry in dirEntries:
             print (entry.heading())
             yield "<li><a href = \"%s\">%s</a>" % (entry.url(view = view), h(name))
-            for text in entry.showFilesAndDirectoriesAsTree(): yield text
+            if depth == None or depth > 1:
+                for text in entry.showFilesAndDirectoriesAsTree(view, [depth-1 if depth else None]): 
+                    yield text
+            else:
+                yield " ..."
             yield "</li>"
         yield "</ul>"
         
     @byView("list", showFilesAndDirectories)
-    def showFilesAndDirectoriesAsList(self, view = None):
+    def showFilesAndDirectoriesAsList(self, view):
         """ Show each of files and sub-directories as a list of links to those resources."""
         dirEntries, fileEntries = self.getDirAndFileEntries()
         if len(dirEntries) > 0:
