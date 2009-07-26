@@ -315,6 +315,9 @@ class Param:
                 raise MissingParameterException(self.name)
         else:
             return self.getValueFromString(stringValue)
+        
+    def description(self):
+        return "%s[%s%s]" % (self.label(), self.name, " (optional)" if self.optional else "")
 
 class StringParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
@@ -323,6 +326,9 @@ class StringParam(Param):
         """Value for a string parameter is just the string"""
         return stringValue
     
+    def label(self):
+        return "String"
+    
 class ResourceParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a URL representing
     another resource (to be used as input when creating the resource being created)."""
@@ -330,6 +336,9 @@ class ResourceParam(Param):
     def getValueFromString(self, stringValue):
         """Convert to a value by looking up resource from URL"""
         return getResource(stringValue)
+    
+    def label(self):
+        return "Resource"
     
 def getResourceParams(queryParams, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
@@ -1011,6 +1020,12 @@ class ResourceTypeResource(BaseResource):
     
     def html(self, view):
         yield "<p>Information about Aptrow resource type %s</p>" % self.type
+        resourceClass = resourceClasses[self.type]
+        params = resourceClass.resourceParams
+        yield "<p>Resource parameters:<ul>"
+        for param in params:
+            yield "<li>%s</li>" % param.description()
+        yield "</ul></p>"
 
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
