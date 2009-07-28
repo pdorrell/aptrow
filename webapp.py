@@ -44,7 +44,7 @@ resourceModules = {}
 
 def addResourceModule(prefix, resourceModule):
     resourceModule.urlPrefix = prefix
-    resourceModules[urlPrefix] = resourceModule
+    resourceModules[prefix] = resourceModule
 
 def resourceTypeName(name):
     """ Class decorator to define the resource type (i.e. 1st part of URL) 
@@ -53,6 +53,28 @@ def resourceTypeName(name):
         print("Registering resource class %s as %r" % (resourceClass.__name__, name))
         resourceClasses[name] = resourceClass
         resourceClass.resourcePath = name
+        return resourceClass
+    return registerResourceClass
+
+class ResourceModule:
+    def __init__(self):
+        self.classes = {}
+        
+    def getResourceClass(self, name):
+        resourceClass = self.classes.get(name)
+        print("In ResourceModule found class %s for name %s" % (resourceClass, name))
+        if resourceClass == None:
+            raise ResourceTypeNotFoundForPathException("%s%s" % (self.urlPrefix, name))
+        return resourceClass
+        
+def resourceTypeNameInModule(name, module):
+    """ Class decorator to define the resource type (i.e. 1st part of URL) 
+    for a base resource class, i.e. a class derived from BaseResource, relative to a ResourceModule """
+    def registerResourceClass(resourceClass):
+        print("Registering resource class %s as %r in module" % (resourceClass.__name__, name))
+        module.classes[name] = resourceClass
+        resourceClass.resourcePath = name
+        resourceClass.module = module
         return resourceClass
     return registerResourceClass
 
@@ -103,16 +125,18 @@ def getResourceAndViewFromPathAndQuery(path, query):
     of a File resource, with additional optional parameter "contentType".) A numbering scheme allows attribute
     lookups to be chained (see AptrowQueryParams for details). 
     """
-    secondSlashPos = path[1:].find("/")
+    secondSlashPos = path.find("/")
     if secondSlashPos != -1:
         urlPrefix = path[:secondSlashPos]
+        print("urlPrefix = %r" % urlPrefix)
         resourceModule = resourceModules.get(urlPrefix)
     else:
         resourceModule = None
     if resourceModule == None:
         resourceClass = resourceClasses.get(path)
     else:
-        resourceClass = resourceModule.getResourceClass(path[secondSlashPos:])
+        print ("Found resourceModule with prefix %s" % resourceModule.urlPrefix)
+        resourceClass = resourceModule.getResourceClass(path[secondSlashPos+1:])
     if resourceClass == None:
         raise ResourceTypeNotFoundForPathException(path)
     queryParams = urllib.parse.parse_qs(query)
@@ -464,10 +488,10 @@ class BaseResource(Resource):
         self.module = None
         
     def modulePrefix(self):
-        if self.module == None:
-            return ""
+        if hasattr(self.__class__, "module"):
+            return "/" + self.__class__.module.urlPrefix
         else:
-            return self.module.urlPrefix
+            return ""
 
     def url(self, attributesAndParams = [], view = None):
         """ Construct URL for this resource, from registered resource type and parameter
@@ -518,8 +542,11 @@ class FileContents(AttributeResource):
         app.start('200 OK', response_headers)
         with self.file.openBinaryFile() as f:
             yield f.read()
+            
+filesModule = ResourceModule()
+addResourceModule("files", filesModule)
         
-@resourceTypeName("dir")
+@resourceTypeNameInModule("dir", filesModule)
 class Directory(BaseResource):
     """A resource representing a directory on the local file system."""
 
@@ -624,7 +651,7 @@ class Directory(BaseResource):
                 yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
             yield "</ul>"
     
-@resourceTypeName("file")
+@resourceTypeNameInModule("file", filesModule)
 class File(BaseResource):
     """A resource representing a file on the local file system."""
 
