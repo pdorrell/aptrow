@@ -364,6 +364,7 @@ class AttributeMethod:
     
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
+    
     def checkExists(self):
         """Default existence check: always passes.
         Resource objects are always created from URL definitions. Often they represent information
@@ -444,10 +445,20 @@ class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
     from registered resource types."""
     
+    def __init__(self):
+        self.module = None
+        
+    def modulePrefix(self):
+        if self.module == None:
+            return ""
+        else:
+            return self.module.urlPrefix
+
     def url(self, attributesAndParams = [], view = None):
         """ Construct URL for this resource, from registered resource type and parameter
         values from urlParams(). Any supplied attribute lookups are added to the end of the URL."""
-        urlString = "/%s?%s" % (self.__class__.resourcePath, urllib.parse.urlencode(self.urlParams(), True))
+        urlString = "%s/%s?%s" % (self.modulePrefix(), self.__class__.resourcePath, 
+                                urllib.parse.urlencode(self.urlParams(), True))
         count = 1
         for attribute,params in attributesAndParams:
             urlString += "&%s" % urllib.parse.urlencode(self.attributeUrlParams(attribute, count, params))
@@ -500,6 +511,7 @@ class Directory(BaseResource):
     resourceParams = [StringParam("path")]
     
     def __init__(self, path):
+        BaseResource.__init__(self)
         self.path = os.path.normpath(path)
         
     def urlParams(self):
@@ -604,6 +616,7 @@ class File(BaseResource):
     resourceParams = [StringParam("path")]
 
     def __init__(self, path):
+        BaseResource.__init__(self)
         self.path = os.path.normpath(path)
         
     def urlParams(self):
@@ -663,6 +676,7 @@ class String(BaseResource):
     resourceParams = [StringParam("value")]
 
     def __init__(self, value):
+        BaseResource.__init__(self)
         self.value = value
         
     def urlParams(self):
@@ -723,6 +737,7 @@ class ZipFile(BaseResource):
     resourceParams = [ResourceParam("file")]
 
     def __init__(self, fileResource):
+        BaseResource.__init__(self)
         self.fileResource = fileResource
         
     def urlParams(self):
@@ -981,7 +996,7 @@ class AptrowResource(BaseResource):
     resourceParams = []
     
     def __init__(self):
-        pass
+        BaseResource.__init__(self)
     
     def urlParams(self):
         return {}
@@ -1005,6 +1020,7 @@ class ResourceTypeResource(BaseResource):
     resourceParams = [StringParam("type")]
     
     def __init__(self, type):
+        BaseResource.__init__(self)
         self.type = type
         
     def urlParams(self):
