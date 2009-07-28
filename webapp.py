@@ -40,6 +40,12 @@ def spacedList(list):
 """ Mapping from resource types """
 resourceClasses = {}
 
+resourceModules = {}
+
+def addResourceModule(prefix, resourceModule):
+    resourceModule.urlPrefix = prefix
+    resourceModules[urlPrefix] = resourceModule
+
 def resourceTypeName(name):
     """ Class decorator to define the resource type (i.e. 1st part of URL) 
     for a base resource class, i.e. a class derived from BaseResource. """
@@ -97,10 +103,19 @@ def getResourceAndViewFromPathAndQuery(path, query):
     of a File resource, with additional optional parameter "contentType".) A numbering scheme allows attribute
     lookups to be chained (see AptrowQueryParams for details). 
     """
-    queryParams = urllib.parse.parse_qs(query)
-    resourceClass = resourceClasses.get(path)
+    secondSlashPos = path[1:].find("/")
+    if secondSlashPos != -1:
+        urlPrefix = path[:secondSlashPos]
+        resourceModule = resourceModules.get(urlPrefix)
+    else:
+        resourceModule = None
+    if resourceModule == None:
+        resourceClass = resourceClasses.get(path)
+    else:
+        resourceClass = resourceModule.getResourceClass(path[secondSlashPos:])
     if resourceClass == None:
         raise ResourceTypeNotFoundForPathException(path)
+    queryParams = urllib.parse.parse_qs(query)
     aptrowQueryParams = AptrowQueryParams(queryParams)
     object = resourceClass(*getResourceParams(aptrowQueryParams, resourceClass.resourceParams))
     for attribute,params in aptrowQueryParams.attributesAndParams():
