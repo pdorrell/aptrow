@@ -1097,4 +1097,4 @@ print("Serving HTTP on port 8000...")
 # Respond to requests until process is killed
 httpd.serve_forever()
 
-# suggested starting URL: http://localhost:8000/dir?path=c:\
+# suggested starting URL: http://localhost:8000/files/dir?path=c:\
