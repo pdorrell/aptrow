@@ -544,7 +544,6 @@ class FileContents(AttributeResource):
             yield f.read()
             
 filesModule = ResourceModule()
-addResourceModule("files", filesModule)
         
 @resourceTypeNameInModule("dir", filesModule)
 class Directory(BaseResource):
@@ -708,7 +707,9 @@ class File(BaseResource):
         """Return contents of file with optional content type"""
         return FileContents(self, contentType)
         
-@resourceTypeName("string")
+stringsModule = ResourceModule()
+
+@resourceTypeNameInModule("string", stringsModule)
 class String(BaseResource):
     """A resource representing a String value. (There is no external resource, as the 
     string is provided as a parameter. This resource type is mostly useful for testing, 
@@ -770,7 +771,9 @@ class ZipItemsTree:
             buffer.write("</ul>")
         return buffer.getvalue()
         
-@resourceTypeName("zipfile")
+zipModule = ResourceModule()
+    
+@resourceTypeNameInModule("zip", zipModule)
 class ZipFile(BaseResource):
     """A resource representing a Zip file, which gives access to the items within the Zip file
     as nested resources. The ZipFile resource needs to be created from a 'file' resource, where
@@ -1031,7 +1034,9 @@ class ZipItem(AttributeResource):
         """Return contents of zip item with optional content type"""
         return FileContents(self, contentType)
     
-@resourceTypeName("aptrow")
+aptrowModule = ResourceModule()
+    
+@resourceTypeNameInModule("aptrow", aptrowModule)
 class AptrowResource(BaseResource):
     """A resource representing the Aptrow application itself"""
     
@@ -1057,7 +1062,7 @@ class AptrowResource(BaseResource):
                                                                           h(resourceType), h(resourceClass.__name__))
         yield "</tbody></table>"
         
-@resourceTypeName("resourceType")
+@resourceTypeNameInModule("resourceType", aptrowModule)
 class ResourceTypeResource(BaseResource):
     resourceParams = [StringParam("type")]
     
@@ -1084,6 +1089,12 @@ class ResourceTypeResource(BaseResource):
         for param in params:
             yield "<li>%s</li>" % param.description()
         yield "</ul></p>"
+
+# define resource modules
+addResourceModule("files", filesModule)
+addResourceModule("strings", stringsModule)
+addResourceModule("zip", zipModule)
+addResourceModule("aptrow", aptrowModule)
 
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
