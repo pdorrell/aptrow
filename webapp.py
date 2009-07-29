@@ -37,24 +37,11 @@ def spacedList(list):
         newList[i*2] = item
     return newList
 
-""" Mapping from resource types """
-resourceClasses = {}
-
 resourceModules = {}
 
 def addResourceModule(prefix, resourceModule):
     resourceModule.urlPrefix = prefix
     resourceModules[prefix] = resourceModule
-
-def resourceTypeName(name):
-    """ Class decorator to define the resource type (i.e. 1st part of URL) 
-    for a base resource class, i.e. a class derived from BaseResource. """
-    def registerResourceClass(resourceClass):
-        print("Registering resource class %s as %r" % (resourceClass.__name__, name))
-        resourceClasses[name] = resourceClass
-        resourceClass.resourcePath = name
-        return resourceClass
-    return registerResourceClass
 
 class ResourceModule:
     def __init__(self):
@@ -133,7 +120,7 @@ def getResourceAndViewFromPathAndQuery(path, query):
     else:
         resourceModule = None
     if resourceModule == None:
-        resourceClass = resourceClasses.get(path)
+        raise ResourceTypeNotFoundForPathException(path)
     else:
         print ("Found resourceModule with prefix %s" % resourceModule.urlPrefix)
         resourceClass = resourceModule.getResourceClass(path[secondSlashPos+1:])
@@ -1054,36 +1041,69 @@ class AptrowResource(BaseResource):
     
     def html(self, view):
         yield "<p>Information about the Aptrow application"
-        yield "<h2>Resource types</h2>"
-        yield "<table><thead><tr><td>Type</td><td>Python Class</td></tr></thead>"
-        yield "<tbody>"
-        for resourceType, resourceClass in resourceClasses.items():
-            yield "<tr><td><a href=\"%s\">%s</a></td><td>%s</td></tr>" % (ResourceTypeResource(resourceType).url(), 
-                                                                          h(resourceType), h(resourceClass.__name__))
-        yield "</tbody></table>"
+        yield "<h2>Resource modules</h2><ul>"
+        for prefix, resourceModule in resourceModules.items():
+            yield "<li><a href=\"%s\">%s</a></li>" % (ResourceModuleResource(prefix).url(), 
+                                                                          h(prefix))
+        yield "</ul>"
         
-@resourceTypeNameInModule("resourceType", aptrowModule)
-class ResourceTypeResource(BaseResource):
-    resourceParams = [StringParam("type")]
+@resourceTypeNameInModule("module", aptrowModule)
+class ResourceModuleResource(BaseResource):
+    resourceParams = [StringParam("prefix")]
     
-    def __init__(self, type):
+    def __init__(self, prefix):
         BaseResource.__init__(self)
-        self.type = type
+        self.prefix = prefix
         
     def urlParams(self):
-        return {"type": [self.type]}
+        return {"prefix": [self.prefix]}
         
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
-        return "Aptrow Resource Type %s" % self.type
+        return "Aptrow Resource Module %s" % self.prefix
     
     def checkExists(self):
-        if self.type not in resourceClasses:
-            raise NoSuchObjectException ("No such Aptrow resource type: %r" % self.type)
+        if self.prefix not in resourceModules:
+            raise NoSuchObjectException ("No such Aptrow resource module: %r" % self.prefix)
     
     def html(self, view):
+        yield "<p>Information about Aptrow resource module %s</p>" % self.prefix
+        resourceModule = resourceModules[self.prefix]
+        yield "<h2>Resource types</h2>"
+        yield "<table><thead><tr><td>Type</td><td>Python Class</td></tr></thead>"
+        yield "<tbody>"
+        for resourceType, resourceClass in resourceModule.classes.items():
+            yield "<tr><td><a href=\"%s\">%s</a></td><td>%s</td></tr>" % (ResourceTypeResource(self.prefix, resourceType).url(), 
+                                                                          h(resourceType), h(resourceClass.__name__))
+        yield "</tbody></table>"
+
+@resourceTypeNameInModule("resourceType", aptrowModule)
+class ResourceTypeResource(BaseResource):
+    resourceParams = [StringParam("prefix"), StringParam("type")]
+    
+    def __init__(self, prefix, type):
+        BaseResource.__init__(self)
+        self.prefix = prefix
+        self.type = type
+        
+    def urlParams(self):
+        return {"prefix": [self.prefix], "type": [self.type]}
+        
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Aptrow Resource Type %s/%s" % (self.prefix, self.type)
+    
+    def checkExists(self):
+        if self.prefix not in resourceModules:
+            raise NoSuchObjectException ("No such Aptrow resource module: %r" % self.prefix)
+        resourceModule = resourceModules[self.prefix]
+        if self.type not in resourceModule.classes:
+            raise NoSuchObjectException ("No such Aptrow resource type: %r in module %s" % (self.type, self.prefix))
+
+    def html(self, view):
         yield "<p>Information about Aptrow resource type %s</p>" % self.type
-        resourceClass = resourceClasses[self.type]
+        resourceModule = resourceModules[self.prefix]
+        resourceClass = resourceModule.classes[self.type]
         params = resourceClass.resourceParams
         yield "<p>Resource parameters:<ul>"
         for param in params:
