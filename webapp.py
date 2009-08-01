@@ -426,7 +426,11 @@ class Resource:
         pass
     
     def interpretationLinks(self):
-        return []
+        links = []
+        if hasattr(self.__class__, "resourceInterfaces"):
+            for interface in self.__class__.resourceInterfaces:
+                links += interface.getInterpretations(self)
+        return links
     
     def interpretationLinksHtml(self):
         links = self.interpretationLinks()
@@ -677,6 +681,8 @@ class File(BaseResource):
     """A resource representing a file on the local file system."""
 
     resourceParams = [StringParam("path")]
+    
+    resourceInterfaces = [fileLikeResource]
 
     def __init__(self, path):
         BaseResource.__init__(self)
@@ -710,9 +716,6 @@ class File(BaseResource):
         """Directory containing file"""
         return Directory(os.path.dirname(self.path))
     
-    def interpretationLinks(self):
-        return fileLikeResource.getInterpretations(self)
-
     def html(self, view):
         """HTML content for file: show various details, including links to contents
         and to alternative views of the file."""
@@ -992,6 +995,9 @@ class ZipItem(AttributeResource):
     specifies name only, so if there are multiple items with the same name -- something generally
     to be avoided when creating zip files, but it can happen -- there is currently no way to access 
     them. Some additional information would have to be included in this resource class to handle multiple items.)"""
+
+    resourceInterfaces = [fileLikeResource]
+
     def __init__(self, zipFile, name):
         self.zipFile = zipFile
         self.name = name
@@ -1047,9 +1053,6 @@ class ZipItem(AttributeResource):
     def asZipFileDir(self):
         return ZipFileDir(self.zipFile, self.name)
     
-    def interpretationLinks(self):
-        return fileLikeResource.getInterpretations(self)
-
     def html(self, view):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
         yield "<p><a href=\"%s\">Content</a>" % FileContents(self, "text/plain").url()
