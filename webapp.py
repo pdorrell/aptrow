@@ -194,6 +194,23 @@ class UnknownViewTypeException(MessageException):
     def __init__(self, type):
         self.message = "Unknown view type \"%s\"" % type
         
+class ResourceInterface:
+    def __init__(self):
+        self.interpretationMethods = []
+        
+    def addInterpretation(self, method):
+        self.interpretationMethods.append(method)
+        
+    def getInterpretations(self, resource):
+        links = []
+        for method in self.interpretationMethods:
+            link = method(resource)
+            if link:
+                links.append (link)
+        return links
+    
+fileLikeInterface = ResourceInterface()
+        
 class View:
     def __init__(self, type, params = {}):
         self.type = type
@@ -687,7 +704,7 @@ class File(BaseResource):
         return Directory(os.path.dirname(self.path))
     
     def interpretationLinks(self):
-        return [ZipFile.interpretationLink(self)]
+        return fileLikeInterface.getInterpretations(self)
 
     def html(self, view):
         """HTML content for file: show various details, including links to contents
@@ -861,6 +878,8 @@ class ZipFile(BaseResource):
         """Return a named item from this zip file as a ZipFileDir resource"""
         return ZipFileDir(self, path)
     
+fileLikeInterface.addInterpretation(ZipFile.interpretationLink)
+    
 class ZipFileDir(AttributeResource):
     """A resource representing a directory within a zip file. Considered to exist if the path
     name ends in '/', and, either (1) a corresponding Zip item exists, or (2) other Zip items exist 
@@ -1023,7 +1042,7 @@ class ZipItem(AttributeResource):
         return ZipFileDir(self.zipFile, self.name)
     
     def interpretationLinks(self):
-        return [ZipFile.interpretationLink(self)]
+        return fileLikeInterface.getInterpretations(self)
 
     def html(self, view):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
