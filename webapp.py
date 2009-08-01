@@ -209,7 +209,14 @@ class ResourceInterface:
                 links.append (link)
         return links
     
-fileLikeInterface = ResourceInterface()
+# resource interface for resources which are "like" a File
+fileLikeResource = ResourceInterface()
+
+def interpretationOf(resourceInterface):
+    def decorator(interpretationMethod):
+        resourceInterface.addInterpretation(interpretationMethod)
+        return interpretationMethod
+    return decorator
         
 class View:
     def __init__(self, type, params = {}):
@@ -704,7 +711,7 @@ class File(BaseResource):
         return Directory(os.path.dirname(self.path))
     
     def interpretationLinks(self):
-        return fileLikeInterface.getInterpretations(self)
+        return fileLikeResource.getInterpretations(self)
 
     def html(self, view):
         """HTML content for file: show various details, including links to contents
@@ -818,6 +825,7 @@ class ZipFile(BaseResource):
         return zipfile.ZipFile(self.fileResource.openBinaryFile(), "r")
     
     @staticmethod
+    @interpretationOf(fileLikeResource)
     def interpretationLink(fileResource):
         return "<a href =\"%s\">zipFile</a>" % ZipFile(fileResource).url()
     
@@ -877,8 +885,6 @@ class ZipFile(BaseResource):
     def dir(self, path):
         """Return a named item from this zip file as a ZipFileDir resource"""
         return ZipFileDir(self, path)
-    
-fileLikeInterface.addInterpretation(ZipFile.interpretationLink)
     
 class ZipFileDir(AttributeResource):
     """A resource representing a directory within a zip file. Considered to exist if the path
@@ -1042,7 +1048,7 @@ class ZipItem(AttributeResource):
         return ZipFileDir(self.zipFile, self.name)
     
     def interpretationLinks(self):
-        return fileLikeInterface.getInterpretations(self)
+        return fileLikeResource.getInterpretations(self)
 
     def html(self, view):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
