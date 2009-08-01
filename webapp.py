@@ -401,6 +401,16 @@ class Resource:
         """
         pass
     
+    def interpretationLinks(self):
+        return []
+    
+    def interpretationLinksHtml(self):
+        links = self.interpretationLinks()
+        if len(links) == 0:
+            return ""
+        else:
+            return "<p><b>Interpret as:</b> %s" % (" ".join(links))
+    
     def defaultView(self):
         return None
     
@@ -428,6 +438,7 @@ class Resource:
         yield "<html><head><title>%s</title></head><body>" % h(heading)
         yield app.message
         yield "<h2>%s</h2>" % h(heading)
+        yield self.interpretationLinksHtml()
         try:
             for text in self.html(view): yield text
         except BaseException as error:
@@ -674,6 +685,9 @@ class File(BaseResource):
     def dir(self):
         """Directory containing file"""
         return Directory(os.path.dirname(self.path))
+    
+    def interpretationLinks(self):
+        return [ZipFile.interpretationLink(self)]
 
     def html(self, view):
         """HTML content for file: show various details, including links to contents
@@ -687,7 +701,6 @@ class File(BaseResource):
         yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
         yield "</p>"
         # Link showing file as a zip file (you'll find out when you click on it if it really is a Zip file).
-        yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url() 
         
     @attribute(StringParam("contentType", optional = True))
     def contents(self, contentType):
@@ -786,6 +799,10 @@ class ZipFile(BaseResource):
     def openZipFile(self):
         """Return on open (read-only) zipfile.ZipFile object."""
         return zipfile.ZipFile(self.fileResource.openBinaryFile(), "r")
+    
+    @staticmethod
+    def interpretationLink(fileResource):
+        return "<a href =\"%s\">zipFile</a>" % ZipFile(fileResource).url()
     
     def getZipInfos(self):
         """Get the list of ZipInfo objects representing information about the
@@ -1005,12 +1022,14 @@ class ZipItem(AttributeResource):
     def asZipFileDir(self):
         return ZipFileDir(self.zipFile, self.name)
     
+    def interpretationLinks(self):
+        return [ZipFile.interpretationLink(self)]
+
     def html(self, view):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
         yield "<p><a href=\"%s\">Content</a>" % FileContents(self, "text/plain").url()
         yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
         yield "</p>"
-        yield "<p><a href =\"%s\">zipFile</a> " % ZipFile(self).url()
         if self.name.endswith("/"):
             zipFileDir = self.asZipFileDir()
             yield "<p><a href =\"%s\">(as Zip directory)</a> " % zipFileDir.url()
