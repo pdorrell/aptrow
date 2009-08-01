@@ -178,7 +178,16 @@ class AptrowApp:
             yield self.not_found("No resource type defined for path \"%s\"" % pathInfo)
         except (NoSuchObjectException, ParameterException) as exception:
             yield self.not_found(exception.message)
-            
+
+def runAptrowServer(host, port):
+    from wsgiref.simple_server import make_server
+
+    httpd = make_server(host, port, AptrowApp)
+    print("Serving HTTP on http://%s:%s/ ..." % (host, port))
+
+    # Respond to requests until process is killed
+    httpd.serve_forever()
+
 class ParameterException(MessageException):
     """Thrown when a URL parameter is invalid or missing"""
     def __init__(self, message):
@@ -1167,12 +1176,6 @@ addResourceModule("aptrow", aptrowModule)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
 # on the local filesystem which can be accessed by the user running the application. So beware.
         
-from wsgiref.simple_server import make_server
-
-httpd = make_server('localhost', 8000, AptrowApp)
-print("Serving HTTP on port 8000...")
-
-# Respond to requests until process is killed
-httpd.serve_forever()
+runAptrowServer('localhost', 8000)
 
 # suggested starting URL: http://localhost:8000/files/dir?path=c:\
