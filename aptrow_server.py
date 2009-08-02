@@ -1,7 +1,22 @@
+""" Copyright 2009 Philip Dorrell http://www.1729.com/ (email: http://www.1729.com/email.html)
+    
+  This file is part of Aptrow ("Advance Programming Technology Read-Only Webification": http://www.1729.com/aptrow/)
+
+  Aptrow is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+  as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+  Aptrow is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty 
+  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with Aptrow (as license-gplv3.txt).
+  If not, see <http://www.gnu.org/licenses/>."""
+
 import aptrow
 from aptrow import addModule, runAptrowServer
 
 # define resource modules
+# format: addModule (<prefix>, <python module>)
+
 addModule ("files",   "files_module")
 addModule ("strings", "strings_module")
 addModule ("zip",     "zip_module")

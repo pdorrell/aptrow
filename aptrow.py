@@ -13,9 +13,7 @@
 
 # Platform: Python 3.1 (currently being developed on MS Windows)
 
-# SECURITY NOTE: This demo application gives read-only access (to any web client that can access localhost)
-# to all files and directories on the local filesystem which can be accessed by the user running the application. 
-# So beware.
+# Base module to be imported by all modules presenting specific resource types, and also by aptrow_server.py
 
 import urllib
 import os
