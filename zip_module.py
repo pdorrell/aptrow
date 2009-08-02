@@ -1,6 +1,9 @@
 from aptrow import *
 import zipfile
 
+# Aptrow module enabling a "file-like" resource to be intrepreted as a zip file
+# (and presenting items within a zip file as "file-like" resources).
+
 aptrowModule = ResourceModule()
     
 class ZipItemsTree:

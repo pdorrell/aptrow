@@ -1,5 +1,7 @@
 from aptrow import *
 
+# Aptrow module presenting a character string (encoded in the URL) as a resource
+
 aptrowModule = ResourceModule()
 
 @resourceTypeNameInModule("string", aptrowModule)

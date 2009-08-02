@@ -1,5 +1,7 @@
 from aptrow import *
 
+# Aptrow module giving access to files and directories in the local file system
+
 aptrowModule = ResourceModule()
         
 @resourceTypeNameInModule("dir", aptrowModule)

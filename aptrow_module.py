@@ -1,5 +1,7 @@
 from aptrow import *
 
+# Aptrow module giving access to components of Aptrow itself.
+
 aptrowModule = ResourceModule()
     
 @resourceTypeNameInModule("aptrow", aptrowModule)
@@ -28,6 +30,8 @@ class AptrowResource(BaseResource):
         
 @resourceTypeNameInModule("module", aptrowModule)
 class ResourceModuleResource(BaseResource):
+    """A resource representing an Aptrow Module."""
+    
     resourceParams = [StringParam("prefix")]
     
     def __init__(self, prefix):
@@ -58,6 +62,8 @@ class ResourceModuleResource(BaseResource):
 
 @resourceTypeNameInModule("resourceType", aptrowModule)
 class ResourceTypeResource(BaseResource):
+    """A resource representing a resource type"""
+    
     resourceParams = [StringParam("prefix"), StringParam("type")]
     
     def __init__(self, prefix, type):
