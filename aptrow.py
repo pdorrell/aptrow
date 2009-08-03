@@ -130,7 +130,9 @@ def getResourceAndViewFromPathAndQuery(path, query):
         raise ResourceTypeNotFoundForPathException(path)
     queryParams = urllib.parse.parse_qs(query)
     aptrowQueryParams = AptrowQueryParams(queryParams)
-    object = resourceClass(*getResourceParams(aptrowQueryParams, resourceClass.resourceParams))
+    resourceParamValues = getResourceParams(aptrowQueryParams, resourceClass.resourceParams)
+    object = resourceClass(*resourceParamValues)
+    object.resourceParamValues = resourceParamValues # record parameters passed in
     for attribute,params in aptrowQueryParams.attributesAndParams():
         attributeValue = object.resolveAttribute(attribute, params)
         if attributeValue == None:
@@ -219,6 +221,9 @@ class ResourceInterface:
             if link:
                 links.append (link)
         return links
+    
+# all resources are "aptrow" resources
+aptrowResource = ResourceInterface()
     
 # resource interface for resources which are "like" a File
 fileLikeResource = ResourceInterface()
@@ -390,6 +395,9 @@ class StringParam(Param):
     def label(self):
         return "String"
     
+    def reflectionHtml(self, value):
+        return "%s = \"%s\"" % (h(self.name), h(value))
+    
 class ResourceParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a URL representing
     another resource (to be used as input when creating the resource being created)."""
@@ -400,6 +408,9 @@ class ResourceParam(Param):
     
     def label(self):
         return "Resource"
+    
+    def reflectionHtml(self, value):
+        return "%s =<br/>%s" % (h(self.name), value.reflectionHtml())
     
 def getResourceParams(queryParams, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
@@ -437,7 +448,7 @@ class Resource:
         pass
     
     def interpretationLinks(self):
-        links = []
+        links = aptrowResource.getInterpretations(self)
         if hasattr(self.__class__, "resourceInterfaces"):
             for interface in self.__class__.resourceInterfaces:
                 links += interface.getInterpretations(self)
@@ -543,17 +554,42 @@ class BaseResource(Resource):
             urlString += "&%s" % urllib.parse.urlencode(view.htmlParamsDict())
         return urlString
     
+    def getAttributeHtml(self, attribute, params):
+        print ("attribute = %r, params = %r" % (attribute, params))
+        paramHtmls = ["%s = \"%s\"" % (h(param), h(value)) for param,value in params.items()]
+        return "<b>%s</b> <b>%s</b>(%s)" % ("->", h(attribute), ", ".join(paramHtmls))
+    
+    def reflectionHtml(self, attributesAndParams = []):
+        """Output HTML showing the parameters that define this resource"""
+        resourceParamsAndValues = zip(self.__class__.resourceParams, self.resourceParamValues)
+        paramValuesHtmls = [param.reflectionHtml(value) for (param, value) in resourceParamsAndValues]
+        paramValuesListItems = ["<li>%s</li>" % html for html in paramValuesHtmls]
+        attributesAndParamsHtmls = [self.getAttributeHtml(attribute, params) 
+                                   for attribute, params in attributesAndParams]
+        attributeAndParamItems = ["<br/>%s" % html for html in attributesAndParamsHtmls]
+        return "<b>%s:</b><ul>%s</ul>%s" % (h(self.__class__.__name__), 
+                                            "".join(paramValuesListItems), 
+                                            "".join(attributeAndParamItems))
+    
 class AttributeResource(Resource):
     """Base class for Resource classes representing resources which are constructed as attributes
     of other resources. """
+    
+    def getBaseObjectAttributesAndParams(self, attributesAndParams = []):
+        baseObject, attribute, params = self.baseObjectAndParams()
+        return baseObject, [(attribute, params)] + attributesAndParams
     
     def url(self, attributesAndParams = [], view = None):
         """Construct a URL for this resource, by determining the details for the base object and
         the attribute parameters used to look up this object, then append any additional supplied
         attribute lookups before creating the full URL."""
-        baseObject, attribute, params = self.baseObjectAndParams()
-        return baseObject.url([(attribute, params)] + attributesAndParams, view = view)
-        
+        baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
+        return baseObject.url(baseObjectAttributesAndParams, view = view)
+                                      
+    def reflectionHtml(self, attributesAndParams = []):
+        baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
+        return baseObject.reflectionHtml(baseObjectAttributesAndParams)
+                                     
 class FileContents(AttributeResource):
     """A resource representing the contents of a file, to be returned directly
     to the web browser (with an optionally specified content type). The 'file'

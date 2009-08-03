@@ -107,3 +107,31 @@ class ResourceTypeResource(BaseResource):
         for param in params:
             yield "<li>%s</li>" % param.description()
         yield "</ul></p>"
+
+@resourceTypeNameInModule("aptrow", aptrowModule)
+class ResourceResource(BaseResource):
+    """A resource representing itself as an Aptrow resource (to allow reflection within Aptrow) """
+    resourceParams = [ResourceParam("resource")]
+    
+    def __init__(self, resource):
+        BaseResource.__init__(self)
+        self.resource = resource
+    
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource."""
+        return {"resource": [self.resource.url()]}
+    
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Resource [%s]" % self.resource.heading()
+    
+    @staticmethod
+    @interpretationOf(aptrowResource)
+    def interpretationLink(resource):
+        return "<a href =\"%s\">reflected</a>" % ResourceResource(resource).url()
+    
+    def html(self, view):
+        """HTML content for this resource. Link back to base file resource, and list
+        items within the file."""
+        yield "<p>Reflection information about resource <b>%s</b></p>" % self.resource.htmlLink()
+        yield self.resource.reflectionHtml()
