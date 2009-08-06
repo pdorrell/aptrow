@@ -21,6 +21,7 @@ addModule ("files",   "files_module")
 addModule ("strings", "strings_module")
 addModule ("zip",     "zip_module")
 addModule ("aptrow",  "aptrow_module")
+addModule ("sqlite",  "sqlite_module")
 
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
