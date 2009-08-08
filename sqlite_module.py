@@ -39,7 +39,6 @@ class SqliteDatabase(BaseResource):
     def checkExists(self):
         self.fileResource.checkExists()
     
-    
     def connect(self):
         return sqlite3.connect(self.fileResource.path)
     
@@ -60,10 +59,49 @@ class SqliteDatabase(BaseResource):
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Sqlite database</p>" % self.fileResource.htmlLink()
         yield "<h2>Tables</h2><ul>"
-        for table in self.listTables():
-            yield "<li>%s</li>" % hr(table)
+        for tableName in self.listTables():
+            table = self.table(tableName)
+            yield "<li><a href=\"%s\">%s</a></li>" % (table.url(), h(table.name))
         yield "</ul>"
-
-
         
+    @attribute(StringParam("name"))
+    def table(self, name):
+        return SqliteTable(self, name)
+
+class SqliteTable(AttributeResource):
+    def __init__(self, database, name):
+        self.database = database
+        self.name = name
+
+    def baseObjectAndParams(self):
+        return (self.database, "table", {"name": self.name})
     
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Table %s in %s" % (self.name, self.database.heading())
+    
+    def checkExists(self):
+        self.database.checkExists()
+        tableExists = False
+        with self.database.connect() as connection:
+            cursor = connection.cursor()
+            cursor.execute ("SELECT name FROM sqlite_master WHERE type = \"table\" and name = ?", (self.name, ))
+            for row in cursor:
+                tableExists = True
+        if not tableExists:
+            raise NoSuchObjectException("No table %s in %s" %(self.name, self.database.heading()))
+        
+    def listRows(self):
+        with self.database.connect() as connection:
+            cursor = connection.cursor()
+            cursor.execute ("SELECT * FROM \"%s\"" % self.name)
+            for row in cursor:
+                yield row
+    
+    def html(self, view):
+        """HTML content for this resource. Link back to base file resource, and list
+        items within the file."""
+        yield "<h2>Rows</h2><ul>"
+        for row in self.listRows():
+            yield "<li>%s</li>" % hr(row)
+        yield "</ul>"
