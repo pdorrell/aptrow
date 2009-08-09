@@ -58,6 +58,11 @@ class SqliteDatabase(BaseResource):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Sqlite database</p>" % self.fileResource.htmlLink()
+        yield "<h2>Master Tables</h2><ul>"
+        for tableName in ['sqlite_master']:
+            table = self.table(tableName)
+            yield "<li><a href=\"%s\">%s</a></li>" % (table.url(), h(table.name))
+        yield "</ul>"
         yield "<h2>Tables</h2><ul>"
         for tableName in self.listTables():
             table = self.table(tableName)
@@ -83,6 +88,8 @@ class SqliteTable(AttributeResource):
     def checkExists(self):
         self.database.checkExists()
         tableExists = False
+        if self.name == "sqlite_master":
+            return
         with self.database.connect() as connection:
             cursor = connection.cursor()
             cursor.execute ("SELECT name FROM sqlite_master WHERE type = \"table\" and name = ?", (self.name, ))
@@ -95,13 +102,15 @@ class SqliteTable(AttributeResource):
         with self.database.connect() as connection:
             cursor = connection.cursor()
             cursor.execute ("SELECT * FROM \"%s\"" % self.name)
+            yield (True, [desc[0] for desc in cursor.description])
             for row in cursor:
-                yield row
+                yield (False, row)
     
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
-        yield "<h2>Rows</h2><ul>"
-        for row in self.listRows():
-            yield "<li>%s</li>" % hr(row)
-        yield "</ul>"
+        yield "<h2>Rows</h2>"
+        yield "<table border=1>"
+        for isHeader, row in self.listRows():
+            yield "<tr>%s</tr>" % "".join(["<td>%s</td>" % h(str(item)) for item in row])
+        yield "</table>"
