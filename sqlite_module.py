@@ -115,6 +115,8 @@ class SqliteTable(AttributeResource):
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
+        yield "<p><a href=\"%s\">Database</a></p>" % self.database.url()
+        yield "<h2>Table Info</h2>"
+        for text in self.listQueryResultsInHtmlTable("pragma table_info(\"%s\")" % self.name): yield text
         yield "<h2>Rows</h2>"
-        yield "<table border=1>"
         for text in self.listQueryResultsInHtmlTable("SELECT * FROM \"%s\"" % self.name): yield text
