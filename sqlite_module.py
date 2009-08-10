@@ -98,19 +98,23 @@ class SqliteTable(AttributeResource):
         if not tableExists:
             raise NoSuchObjectException("No table %s in %s" %(self.name, self.database.heading()))
         
-    def listRows(self):
+    def listQueryResults(self, query, args = []):
         with self.database.connect() as connection:
             cursor = connection.cursor()
-            cursor.execute ("SELECT * FROM \"%s\"" % self.name)
+            cursor.execute (query, *args)
             yield (True, [desc[0] for desc in cursor.description])
             for row in cursor:
                 yield (False, row)
+                
+    def listQueryResultsInHtmlTable(self, query, args = []):
+        yield "<table border=1>"
+        for isHeader, row in self.listQueryResults(query):
+            yield "<tr>%s</tr>" % "".join(["<td>%s</td>" % h(str(item)) for item in row])
+        yield "</table>"
     
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
         yield "<h2>Rows</h2>"
         yield "<table border=1>"
-        for isHeader, row in self.listRows():
-            yield "<tr>%s</tr>" % "".join(["<td>%s</td>" % h(str(item)) for item in row])
-        yield "</table>"
+        for text in self.listQueryResultsInHtmlTable("SELECT * FROM \"%s\"" % self.name): yield text
