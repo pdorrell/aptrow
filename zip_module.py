@@ -83,7 +83,9 @@ class ZipFile(BaseResource):
     
     @staticmethod
     @interpretationOf(fileLikeResource)
-    def interpretationLink(fileResource):
+    def interpretationLink(fileResource, likely = True):
+        if likely and fileResource.extension() not in ["zip", "jar", "war"]:
+            return None
         return "<a href =\"%s\">zipFile</a>" % ZipFile(fileResource).url()
     
     def getZipInfos(self):
@@ -267,6 +269,13 @@ class ZipItem(AttributeResource):
     def getZipInfo(self):
         return self.zipFile.openZipFile().getinfo(self.name)
     
+    def extension(self):
+        lastDotPos = self.name.rindex(".")
+        if lastDotPos == -1:
+            return ""
+        else:
+            return self.name[lastDotPos+1:]
+        
     def checkExists(self):
         self.zipFile.checkExists()
         zipFile = self.zipFile.openZipFile()

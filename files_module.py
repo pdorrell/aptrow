@@ -153,6 +153,13 @@ class File(BaseResource):
         elif not os.path.isfile(self.path):
             raise NoSuchObjectException("Path %r is not a file" % self.path)
         
+    def extension(self):
+        lastDotPos = self.path.rindex(".")
+        if lastDotPos == -1:
+            return ""
+        else:
+            return self.path[lastDotPos+1:]
+        
     def isDir(self):
         """No this resource is not a directory (because it's a file)"""
         return False

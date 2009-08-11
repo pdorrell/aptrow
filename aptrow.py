@@ -214,10 +214,10 @@ class ResourceInterface:
     def addInterpretation(self, method):
         self.interpretationMethods.append(method)
         
-    def getInterpretations(self, resource):
+    def getInterpretations(self, resource, all = True):
         links = []
         for method in self.interpretationMethods:
-            link = method(resource)
+            link = method(resource, likely = not all)
             if link:
                 links.append (link)
         return links
