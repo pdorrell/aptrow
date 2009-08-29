@@ -207,6 +207,16 @@ class UnknownViewTypeException(MessageException):
     def __init__(self, type):
         self.message = "Unknown view type \"%s\"" % type
         
+class Interpretation:
+    """A possible interpretation of this resource as another resource."""
+    def __init__(self, resource, description, likely):
+        self.resource = resource
+        self.description = description
+        self.likely = likely
+        
+    def link(self):
+        return "<a href=\"%s\">%s</a>" % (self.resource.url(), h(self.description))
+        
 class ResourceInterface:
     def __init__(self):
         self.interpretationMethods = []
@@ -214,13 +224,12 @@ class ResourceInterface:
     def addInterpretation(self, method):
         self.interpretationMethods.append(method)
         
-    def getInterpretations(self, resource, all = True):
-        links = []
+    def getInterpretationsOf(self, resource): # todo simplify
+        intrepretations = []
         for method in self.interpretationMethods:
-            link = method(resource, likely = not all)
-            if link:
-                links.append (link)
-        return links
+            intrepretation = method(resource)
+            intrepretations.append (intrepretation)
+        return intrepretations
     
 # all resources are "aptrow" resources
 aptrowResource = ResourceInterface()
@@ -447,15 +456,16 @@ class Resource:
         """
         pass
     
-    def interpretationLinks(self):
-        links = aptrowResource.getInterpretations(self)
+    def getInterpretations(self):
+        interpretations = aptrowResource.getInterpretationsOf(self)
         if hasattr(self.__class__, "resourceInterfaces"):
             for interface in self.__class__.resourceInterfaces:
-                links += interface.getInterpretations(self)
-        return links
+                interpretations += interface.getInterpretationsOf(self)
+        return interpretations
     
     def interpretationLinksHtml(self):
-        links = self.interpretationLinks()
+        interpretations = self.getInterpretations()
+        links = [interpretation.link() for interpretation in interpretations]
         if len(links) == 0:
             return ""
         else:

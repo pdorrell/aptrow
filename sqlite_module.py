@@ -51,10 +51,9 @@ class SqliteDatabase(BaseResource):
                 
     @staticmethod
     @interpretationOf(fileLikeResource)
-    def interpretationLink(fileResource, likely = True):
-        if likely and not fileResource.extension() == "sqlite":
-            return None
-        return "<a href =\"%s\">sqlite</a>" % SqliteDatabase(fileResource).url()
+    def interpretation(fileResource):
+        return Interpretation(SqliteDatabase(fileResource), "sqlite", 
+                              likely = fileResource.extension() == "sqlite")
     
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list

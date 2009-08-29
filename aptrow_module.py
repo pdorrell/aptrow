@@ -127,8 +127,8 @@ class ResourceResource(BaseResource):
     
     @staticmethod
     @interpretationOf(aptrowResource)
-    def interpretationLink(resource, likely = True):
-        return "<a href =\"%s\">reflected</a>" % ResourceResource(resource).url()
+    def interpretation(resource):
+        return Interpretation(ResourceResource(resource), "reflected", likely = True)
     
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list

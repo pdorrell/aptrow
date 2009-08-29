@@ -83,10 +83,9 @@ class ZipFile(BaseResource):
     
     @staticmethod
     @interpretationOf(fileLikeResource)
-    def interpretationLink(fileResource, likely = True):
-        if likely and fileResource.extension() not in ["zip", "jar", "war"]:
-            return None
-        return "<a href =\"%s\">zipFile</a>" % ZipFile(fileResource).url()
+    def interpretation(fileResource, likely = True):
+        return Interpretation(ZipFile(fileResource), "zipFile", 
+                              likely = fileResource.extension() in ["zip", "jar", "war"])
     
     def getZipInfos(self):
         """Get the list of ZipInfo objects representing information about the
