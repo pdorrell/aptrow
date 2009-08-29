@@ -224,12 +224,8 @@ class ResourceInterface:
     def addInterpretation(self, method):
         self.interpretationMethods.append(method)
         
-    def getInterpretationsOf(self, resource): # todo simplify
-        intrepretations = []
-        for method in self.interpretationMethods:
-            intrepretation = method(resource)
-            intrepretations.append (intrepretation)
-        return intrepretations
+    def getInterpretationsOf(self, resource):
+        return [method(resource) for method in self.interpretationMethods]
     
 # all resources are "aptrow" resources
 aptrowResource = ResourceInterface()
