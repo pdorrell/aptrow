@@ -218,6 +218,10 @@ class Interpretation:
         return "<a href=\"%s\">%s</a>" % (self.resource.url(), h(self.description))
         
 class ResourceInterface:
+    """A holder for methods that can 'interpret' a give type of resource, e.g. a 'file-like' resource.
+    Add resource interfaces to the 'resourceInterfaces' class variable of the target resource classes, and
+    define @interpretationOf-decorated (static) methods in the resource classes providing the interpretations.
+    """
     def __init__(self):
         self.interpretationMethods = []
         
@@ -461,11 +465,14 @@ class Resource:
     
     def interpretationLinksHtml(self):
         interpretations = self.getInterpretations()
-        links = [interpretation.link() for interpretation in interpretations]
-        if len(links) == 0:
+        likelyLinks = [interpretation.link() for interpretation in interpretations if interpretation.likely]
+        unlikelyLinks = [interpretation.link() for interpretation in interpretations if not interpretation.likely]
+        if len(likelyLinks) + len(unlikelyLinks) == 0:
             return ""
         else:
-            return "<p><b>Interpret as:</b> %s" % (" ".join(links))
+            if len(unlikelyLinks) > 0:
+                unlikelyLinks = ["("] + unlikelyLinks + [")"]
+            return "<p><b>Interpret as:</b> %s" % (" ".join(likelyLinks + unlikelyLinks))
     
     def defaultView(self):
         return None
