@@ -154,7 +154,7 @@ class File(BaseResource):
             raise NoSuchObjectException("Path %r is not a file" % self.path)
         
     def extension(self):
-        lastDotPos = self.path.rindex(".")
+        lastDotPos = self.path.rfind(".")
         if lastDotPos == -1:
             return ""
         else:

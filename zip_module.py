@@ -269,7 +269,7 @@ class ZipItem(AttributeResource):
         return self.zipFile.openZipFile().getinfo(self.name)
     
     def extension(self):
-        lastDotPos = self.name.rindex(".")
+        lastDotPos = self.name.rfind(".")
         if lastDotPos == -1:
             return ""
         else:
