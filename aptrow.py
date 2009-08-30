@@ -35,21 +35,35 @@ def spacedList(list):
         newList[i*2] = item
     return newList
 
+"""A mapping from URL prefix to ResourceModule"""
 resourceModules = {}
 
 def addResourceModule(prefix, resourceModule):
+    """Add a ResourceModule to resourceModules, also record the ResourceModule's urlPrefix value
+    (so we can go from URL to Resource and back again)"""
     resourceModule.urlPrefix = prefix
     resourceModules[prefix] = resourceModule
     
 def addModule(prefix, moduleName, moduleAttribute = "aptrowModule"):
+    """Import the named module and add it's enclosed ResourceModule 
+    (by default defined as <module>.aptrowModule)"""
     module =__import__(moduleName, locals(), globals(), [], -1)
     addResourceModule(prefix, getattr(module, moduleAttribute))
 
 class ResourceModule:
+    """A ResourceModule represents information about Resource classes defined within one
+    Python module.
+    Lookup of resources occurs in several steps:
+    1. Lookup ResourceModule in resourceModules by first portion of path in URL
+    2. Lookup Resource class from ResourceModule by second portion of path in URL
+    3. Intepret query parameters to create base Resource from Resource class
+    4. (Optional, one or more times) interpret 'attribute' query parameters to determine attribute of base resource
+    """
     def __init__(self):
         self.classes = {}
         
     def getResourceClass(self, name):
+        """Lookup named Resource class"""
         resourceClass = self.classes.get(name)
         print("In ResourceModule found class %s for name %s" % (resourceClass, name))
         if resourceClass == None:
@@ -57,7 +71,7 @@ class ResourceModule:
         return resourceClass
         
 def resourceTypeNameInModule(name, module):
-    """ Class decorator to define the resource type (i.e. 1st part of URL) 
+    """ Class decorator to define the resource type (i.e. 2nd part of URL) 
     for a base resource class, i.e. a class derived from BaseResource, relative to a ResourceModule """
     def registerResourceClass(resourceClass):
         print("Registering resource class %s" % (resourceClass.__name__))
@@ -83,7 +97,8 @@ def getResource(url):
     (The intention is to support remote resources from other Aptrow servers, but currently
     only URL's relative to the local server are supported.)
     
-    Even though WSGI functions parse URL's and query parameters for you, this method is needed
+    Even though WSGI functions parse URL's and query parameters for you, this method (which
+    duplicates some of that parsing) is needed
     to process URL's included as parameter values in other URL's. """
     
     if url.startswith("/"):
@@ -219,7 +234,7 @@ class Interpretation:
         
 class ResourceInterface:
     """A holder for methods that can 'interpret' a give type of resource, e.g. a 'file-like' resource.
-    Add resource interfaces to the 'resourceInterfaces' class variable of the target resource classes, and
+    Useage: add resource interfaces to the 'resourceInterfaces' class variable of the target resource classes, and
     define @interpretationOf-decorated (static) methods in the resource classes providing the interpretations.
     """
     def __init__(self):
@@ -231,19 +246,33 @@ class ResourceInterface:
     def getInterpretationsOf(self, resource):
         return [method(resource) for method in self.interpretationMethods]
     
-# all resources are "aptrow" resources
+"""all resources are "aptrow" resources (do not include this in 'resourceInterfaces' because
+it is always implicitly included.)"""
 aptrowResource = ResourceInterface()
     
-# resource interface for resources which are "like" a File
+""" resource interface for resources which are "like" a File
+So if your resource class is 'file-like', then add this resource interface to
+the class variable 'resourceInterfaces' of your class.
+Current requirements for 'file-like' are:
+* openBinaryFile(self) method which returns an opened binary file
+(todo: some other way to return binary data from an object which can not be accessed this way) """
 fileLikeResource = ResourceInterface()
 
 def interpretationOf(resourceInterface):
+    """Use this decorator to decorate a function (or static method) which returns an Interpretation
+    of a supplied source. The resourceInterface argument describes what 'kind' of resource it applies to."""
     def decorator(interpretationMethod):
         resourceInterface.addInterpretation(interpretationMethod)
         return interpretationMethod
     return decorator
         
 class View:
+    """A 'View' is information about how a resource is to be presented, and
+    is defined by URL parameters prefixed with 'view'.
+    To present a Resource in different ways (at least as HTML), add necessary
+    parameters to the associated View object.
+    A integer 'depth' parameter is included as standard.
+    """
     def __init__(self, type, params = {}):
         self.type = type
         self.params = params
@@ -252,18 +281,21 @@ class View:
             self.depth = int(self.depth)
             
     def depthLessOne(self):
+        """One less than defined depth (if depth is defined)"""
         if self.depth == None:
             return None
         else:
             return self.depth-1
         
     def __eq__(self, other):
+        """Is this view the same as another view."""
         return other != None and self.type == other.type and self.params == other.params
     
     def __repr__(self):
         return "View[%s, %r]" % (self.type, self.params)
     
     def htmlParamsDict(self):
+        """Return HTML parameter dictionary (used to recreate view params in URL)"""
         dict = {}
         if self.type != None:
             dict["view"] = self.type
@@ -273,7 +305,10 @@ class View:
     
 class MethodsByViewType:
     """A dictionary of methods retrieved by view type. 
-    Throws UnknownViewTypeException if view type is unknown."""
+    Throws UnknownViewTypeException if view type is unknown.
+    Wraps a dict so that it throws an UnknownViewTypeException
+    if the view type is not defined.
+    """
     def __init__(self):
         self.methods = {}
         
@@ -288,10 +323,13 @@ class MethodsByViewType:
             return value
         
 def byViewMethod(func):
+    """Use this decorator to replace a method with a lookup table
+    which looks up a method by view type."""
     return MethodsByViewType()
 
 def byView(viewType, methodsByViewType):
-    """Decorator for methods to be looked up by view type"""
+    """Use this decorator to mark the methods that will be found
+    when a method defined by the 'byViewMethod' has a lookup done on it."""
     def decorator(func):
         methodsByViewType[viewType] = func
         return func
@@ -358,6 +396,7 @@ class AptrowQueryParams:
         return params
     
     def getView(self, defaultType = None):
+        """Get the View object defined by the 'view' and 'view.<param>' URL parameters."""
         type = self.getString("view")
         if type == None:
             return None
@@ -375,14 +414,17 @@ class NoSuchObjectException(MessageException):
         self.message = message
         
 class Param:
-    """Parameter definition for an expected base resource parameter."""
+    """Parameter definition for an expected base resource parameter.
+    (This is a base class: the 'getStringValue' method must be defined
+    by an actual concrete Parameter definition class.)
+    """
     def __init__(self, name, optional = False):
         self.name = name
         self.optional = optional
         
     def getValue(self, stringValue):
         """Get value of parameter from a string value. 
-        (Depends on definition of getStringValue method, is a value is supplied.)"""
+        (Depends on definition of getStringValue method, if a value is supplied.)"""
         if stringValue == None:
             if self.optional:
                 return None
