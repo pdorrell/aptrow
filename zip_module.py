@@ -244,6 +244,8 @@ class ZipFileDir(AttributeResource):
             parentPath = parentDir.path
             yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentPath)
         for text in self.showZipItems[view.type](self): yield text
+
+import tempfile
         
 class ZipItem(AttributeResource):
     """A resource representing a named item within a zip file. (Note: current implementation
@@ -299,6 +301,10 @@ class ZipItem(AttributeResource):
         zipItem.close()
         zipFile.close()
         return memoryFile
+    
+    def getFileName(self):
+        nameDir, nameFilePart = os.path.split(self.name)
+        return nameFilePart
     
     zipInfoAttributes = "filename date_time compress_type comment extra create_system create_version extract_version reserved flag_bits volume internal_attr external_attr header_offset CRC compress_size file_size".split()
     

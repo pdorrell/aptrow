@@ -26,6 +26,9 @@ addModule ("sqlite",  "sqlite_module")
 # Run the application as a web server on localhost:8000 (preventing external IP access)
 # SECURITY NOTE: This demo application gives read-only access to all files and directories
 # on the local filesystem which can be accessed by the user running the application. So beware.
+#
+# (Also, this application may create temporary files which it does not delete, which are copies
+#  of the contents of 'file-like' objects which are not themselves files.)
         
 runAptrowServer('localhost', 8000)
 

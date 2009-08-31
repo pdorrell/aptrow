@@ -40,7 +40,7 @@ class SqliteDatabase(BaseResource):
         self.fileResource.checkExists()
     
     def connect(self):
-        return sqlite3.connect(self.fileResource.path)
+        return sqlite3.connect(getFileResourcePath(self.fileResource))
     
     def listTables(self):
         with self.connect() as connection:

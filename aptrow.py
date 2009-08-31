@@ -671,3 +671,18 @@ class FileContents(AttributeResource):
         with self.file.openBinaryFile() as f:
             yield f.read()
             
+import tempfile
+            
+def getFileResourcePath(fileResource):
+    """Get path of file from 'file-like' resource, either 
+    from .path attribute, or from getFileName() & openBinaryFile()"""
+    if hasattr(fileResource, "path"):
+        return fileResource.path
+    else:
+        tempDir = tempfile.mkdtemp(prefix = "aptrow_")
+        tempFileName = os.path.join(tempDir, fileResource.getFileName())
+        with fileResource.openBinaryFile() as inFile:
+            fileContents = inFile.read()
+            with open(tempFileName, "wb") as outFile:
+                outFile.write(fileContents)
+        return tempFileName
