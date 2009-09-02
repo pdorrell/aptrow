@@ -65,7 +65,6 @@ class ResourceModule:
     def getResourceClass(self, name):
         """Lookup named Resource class"""
         resourceClass = self.classes.get(name)
-        print("In ResourceModule found class %s for name %s" % (resourceClass, name))
         if resourceClass == None:
             raise ResourceTypeNotFoundForPathException("%s%s" % (self.urlPrefix, name))
         return resourceClass
@@ -132,14 +131,12 @@ def getResourceAndViewFromPathAndQuery(path, query):
     secondSlashPos = path.find("/")
     if secondSlashPos != -1:
         urlPrefix = path[:secondSlashPos]
-        print("urlPrefix = %r" % urlPrefix)
         resourceModule = resourceModules.get(urlPrefix)
     else:
         resourceModule = None
     if resourceModule == None:
         raise ResourceTypeNotFoundForPathException(path)
     else:
-        print ("Found resourceModule with prefix %s" % resourceModule.urlPrefix)
         resourceClass = resourceModule.getResourceClass(path[secondSlashPos+1:])
     if resourceClass == None:
         raise ResourceTypeNotFoundForPathException(path)

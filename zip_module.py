@@ -290,12 +290,10 @@ class ZipItem(AttributeResource):
         io.BytesIO is currently used as an intermediary, because the 'file-like' features
         of the object returned by ZipFile.open are somewhat limited.
         """
-        print("ZipItem.openBinaryFile for name %s ..." % self.name)
         zipFile = self.zipFile.openZipFile()
         memoryFile = io.BytesIO()
         zipItem = zipFile.open(self.name, "r")
         zipItemBytes = zipItem.read()
-        print (" read %s bytes" % len(zipItemBytes))
         memoryFile.write(zipItemBytes)
         memoryFile.seek(0)
         zipItem.close()
