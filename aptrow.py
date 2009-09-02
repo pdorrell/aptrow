@@ -21,6 +21,8 @@ import traceback
 import cgi
 import io
 
+import htmltags as tag
+
 def h(value):
     """ HTML escape a string value """
     return cgi.escape(value)
@@ -29,9 +31,9 @@ def hr(value):
     """ HTML escape %r version of object description """
     return h(value.__repr__())
 
-def spacedList(list):
-    newList = [" "] * (len(list)*2-1)
-    for i, item in enumerate (list):
+def spacedList(theList):
+    newList = [" "] * (len(theList)*2-1)
+    for i, item in enumerate (theList):
         newList[i*2] = item
     return newList
 
@@ -227,7 +229,7 @@ class Interpretation:
         self.likely = likely
         
     def link(self):
-        return "<a href=\"%s\">%s</a>" % (self.resource.url(), h(self.description))
+        return tag.A(h(self.description), href = self.resource.url())
         
 class ResourceInterface:
     """A holder for methods that can 'interpret' a give type of resource, e.g. a 'file-like' resource.
@@ -511,7 +513,7 @@ class Resource:
         else:
             if len(unlikelyLinks) > 0:
                 unlikelyLinks = ["("] + unlikelyLinks + [")"]
-            return "<p><b>Interpret as:</b> %s" % (" ".join(likelyLinks + unlikelyLinks))
+            return tag.P(tag.B("Interpret as:"), " ", spacedList(likelyLinks+unlikelyLinks))
     
     def defaultView(self):
         return None
@@ -530,6 +532,9 @@ class Resource:
         return attributeParams
     
     def page(self, app, view):
+        for element in self.htmlPage(app, view): yield str(element)
+    
+    def htmlPage(self, app, view):
         """Return the web page for the resource. Default is to return an HTML page
         by calling the resource's 'html()' method. (Override this method entirely
         if something else is required. Note that currently this application does
@@ -539,7 +544,7 @@ class Resource:
         app.start('200 OK', response_headers)
         yield "<html><head><title>%s</title></head><body>" % h(heading)
         yield app.message
-        yield "<h2>%s</h2>" % h(heading)
+        yield tag.H2(h(heading))
         yield self.interpretationLinksHtml()
         try:
             for text in self.html(view): yield text
@@ -561,22 +566,22 @@ class Resource:
         if view == currentView:
             return h(description)
         else:
-            return "<a href=\"%s\">%s</a>" % (self.url(view = view), h(description))
+            return tag.A(h(description), href = self.url(view = view))
             
     def viewLinksHtml(self, viewsAndDescriptions, currentView):
-        return " ".join([self.viewLink(view, description, currentView) 
-                         for view, description in viewsAndDescriptions])
+        return spacedList([self.viewLink(view, description, currentView) 
+                           for view, description in viewsAndDescriptions])
             
     def listAndTreeViewLinks(self, view):
         """Common list of view types: list or tree with optional depths"""
         maxDepths = 4
         if view.type == "tree" and view.depth != None:
             maxDepths = view.depth+2
-        return "".join([self.viewLink(View("list"), "list", view), 
+        return "".join([str(self.viewLink(View("list"), "list", view)), 
                         " ", 
-                        self.viewLink(View("tree"), "tree", view), 
+                        str(self.viewLink(View("tree"), "tree", view)), 
                         "(depth: "] +
-                       spacedList([self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view)
+                       spacedList([str(self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view))
                                    for depth in range(1, maxDepths+1)]) +
                        [")"])
 

@@ -105,7 +105,7 @@ class ZipFile(BaseResource):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
         yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
-        yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFile.viewsAndDescriptions, view)
+        yield tag.P("Views: ", self.viewLinksHtml(ZipFile.viewsAndDescriptions, view))
         for text in self.showZipItems[view.type](self): yield text
             
     @byViewMethod
@@ -236,8 +236,7 @@ class ZipFileDir(AttributeResource):
         
     def html(self, view):
         """HTML content for this resource."""
-        yield "<p>Views: %s</p>" % self.viewLinksHtml(ZipFileDir.viewsAndDescriptions, 
-                                                      view)
+        yield tag.P("Views: ", self.viewLinksHtml(ZipFileDir.viewsAndDescriptions, view))
         yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
         parentDir = self.parent()
         if parentDir:
