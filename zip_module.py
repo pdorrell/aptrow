@@ -13,6 +13,7 @@
 
 from aptrow import *
 import zipfile
+import htmltags as tag
 
 # Aptrow module enabling a "file-like" resource to be intrepreted as a zip file
 # (and presenting items within a zip file as "file-like" resources).
@@ -40,19 +41,15 @@ class ZipItemsTree:
                 subdirTree.addPath(restOfPath, zipItem)
     
     def asHtml(self):
-        buffer = io.StringIO()
         subdirKeys = self.subdirs.keys()
         if len(subdirKeys) + len(self.files) > 0:
-            buffer.write("<ul>")
-            for file,zipItem in self.files:
-                buffer.write("<li><a href=\"%s\">%s</a> <small>(<a href=\"%s\">contents</a>)</small></li>" 
-                             % (zipItem.url(), h(file), zipItem.contents().url()))
-            for subdir in subdirKeys:
-                 buffer.write("<li>%s\n" % h(subdir))
-                 buffer.write("%s\n" % self.subdirs[subdir].asHtml())
-                 buffer.write("</li>\n")
-            buffer.write("</ul>")
-        return buffer.getvalue()
+            return tag.Ul([tag.Li(tag.A(h(file), href = zipItem.url()), " ", 
+                                  tag.Small("(", tag.A("contents", 
+                                                       href = zipItem.contents().url()), ")"))
+                           for file, zipItem in self.files], 
+                          [tag.Li(h(subdir), " ", 
+                                  self.subdirs[subdir].asHtml())
+                           for subdir in subdirKeys])
         
 @resourceTypeNameInModule("zip", aptrowModule)
 class ZipFile(BaseResource):

@@ -45,4 +45,14 @@ class B(Tag):
     def __init__(self, *children, **attributes):
         Tag.__init__(self, "b", *children, **attributes)
     
-        
+class Ul(Tag):
+    def __init__(self, *children, **attributes):
+        Tag.__init__(self, "ul", *children, **attributes)
+
+class Li(Tag):
+    def __init__(self, *children, **attributes):
+        Tag.__init__(self, "li", *children, **attributes)
+
+class Small(Tag):
+    def __init__(self, *children, **attributes):
+        Tag.__init__(self, "small", *children, **attributes)
