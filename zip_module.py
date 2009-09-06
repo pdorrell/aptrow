@@ -43,11 +43,11 @@ class ZipItemsTree:
     def asHtml(self):
         subdirKeys = self.subdirs.keys()
         if len(subdirKeys) + len(self.files) > 0:
-            return tag.Ul([tag.Li(tag.A(h(file), href = zipItem.url()), " ", 
-                                  tag.Small("(", tag.A("contents", 
+            return tag.UL([tag.LI(tag.A(h(file), href = zipItem.url()), " ", 
+                                  tag.SMALL("(", tag.A("contents", 
                                                        href = zipItem.contents().url()), ")"))
                            for file, zipItem in self.files], 
-                          [tag.Li(h(subdir), " ", 
+                          [tag.LI(h(subdir), " ", 
                                   self.subdirs[subdir].asHtml())
                            for subdir in subdirKeys])
         
