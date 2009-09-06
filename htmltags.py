@@ -27,32 +27,16 @@ class Tag:
     
     def endString(self):
         return "</%s>" % self.name
-
-class H2(Tag):
-    def __init__(self, *children):
-        Tag.__init__(self, "h2", *children)
-        
-class A(Tag):
-    def __init__(self, *children, **attributes):
-        Tag.__init__(self, "a", *children, **attributes)
-
     
-class P(Tag):
-    def __init__(self, *children, **attributes):
-        Tag.__init__(self, "p", *children, **attributes)
+def tagFunction(name):
+    def func(*children, **attributes): 
+        return Tag(name, *children, **attributes)
+    return func
     
-class B(Tag):
-    def __init__(self, *children, **attributes):
-        Tag.__init__(self, "b", *children, **attributes)
-    
-class Ul(Tag):
-    def __init__(self, *children, **attributes):
-        Tag.__init__(self, "ul", *children, **attributes)
-
-class Li(Tag):
-    def __init__(self, *children, **attributes):
-        Tag.__init__(self, "li", *children, **attributes)
-
-class Small(Tag):
-    def __init__(self, *children, **attributes):
-        Tag.__init__(self, "small", *children, **attributes)
+H2 = tagFunction("h2")
+A = tagFunction("a")
+P = tagFunction("p")
+B = tagFunction("b")
+Ul = tagFunction("ul")
+Li = tagFunction("li")
+Small = tagFunction("small")
