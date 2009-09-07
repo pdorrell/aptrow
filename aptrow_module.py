@@ -133,5 +133,5 @@ class ResourceResource(BaseResource):
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
-        yield "<p>Reflection information about resource <b>%s</b></p>" % self.resource.htmlLink()
+        yield tag.P("Reflection information about resource ", tag.B(self.resource.htmlLink()))
         yield self.resource.reflectionHtml()

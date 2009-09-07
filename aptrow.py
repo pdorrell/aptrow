@@ -521,8 +521,7 @@ class Resource:
     def htmlLink(self):
         """Default HTML link for a resource. No styling or any other extras, 
         and uses 'heading()' for display value."""
-        return "<a href=\"%s\">%s</a>" % (h(self.url()), h(self.heading()))
-    
+        return tag.A(h(self.heading()), href=self.url())
     
     def attributeUrlParams(self, attribute, count, params):
         """Return URL parameters for a single (numbered) attribute lookup as a map."""

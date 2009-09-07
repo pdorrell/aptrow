@@ -58,16 +58,18 @@ class SqliteDatabase(BaseResource):
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
-        yield "<p>Resource <b>%s</b> interpreted as a Sqlite database</p>" % self.fileResource.htmlLink()
-        yield "<h2>Master Tables</h2><ul>"
+        yield tag.P("Resource ", tag.B(self.fileResource.htmlLink()), " interpreted as a Sqlite database")
+        yield tag.H2("Master Tables")
+        yield "<ul>"
         for tableName in ['sqlite_master']:
             table = self.table(tableName)
-            yield "<li><a href=\"%s\">%s</a></li>" % (table.url(), h(table.name))
+            yield tag.LI(tag.A(h(table.name), href = table.url()))
         yield "</ul>"
-        yield "<h2>Tables</h2><ul>"
+        yield tag.H2("Tables")
+        yield "<ul>"
         for tableName in self.listTables():
             table = self.table(tableName)
-            yield "<li><a href=\"%s\">%s</a></li>" % (table.url(), h(table.name))
+            yield tag.LI(tag.A(h(table.name), href = table.url()))
         yield "</ul>"
         
     @attribute(StringParam("name"))
