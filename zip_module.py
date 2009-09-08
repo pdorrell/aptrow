@@ -101,7 +101,8 @@ class ZipFile(BaseResource):
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
-        yield "<p>Resource <b>%s</b> interpreted as a Zip file</p>" % self.fileResource.htmlLink()
+        yield tag.P("Resource ", tag.B(self.fileResource.htmlLink()), 
+                    " interpreted as a Zip file")
         yield tag.P("Views: ", self.viewLinksHtml(ZipFile.viewsAndDescriptions, view))
         for text in self.showZipItems[view.type](self): yield text
             
@@ -113,18 +114,18 @@ class ZipFile(BaseResource):
     def showZipItemsAsList(self):
         """Show list of links to zip items within the zip file."""
         zipInfos = self.getZipInfos()
-        yield "<h3>Items</h3>"
-        yield "<ul>"
+        yield tag.H3("Items")
+        yield tag.UL().start()
         for zipInfo in zipInfos:
             itemName = zipInfo.filename
-            yield "<li><a href=\"%s\">%s</a></li>" % (ZipItem(self, itemName).url(), h(itemName))
-        yield "</ul>"
+            yield tag.LI(tag.A(h(itemName), href = ZipItem(self, itemName).url()))
+        yield tag.UL().end()
         
     @byView("tree", showZipItems)
     def showZipItemsAsTree(self):
         """Show list of links to zip items as a tree."""
         zipInfos = self.getZipInfos()
-        yield "<h3>Items Tree</h3>"
+        yield tag.H3("Items Tree")
         zipItemsTree = ZipItemsTree()
         for zipInfo in zipInfos:
             itemName = zipInfo.filename
@@ -211,16 +212,16 @@ class ZipFileDir(AttributeResource):
     @byView("list", showZipItems)
     def showZipItemsAsList(self, view = None):
         """Show list of links to zip items within the zip file."""
-        yield "<h3>Items</h3>"
-        yield "<ul>"
+        yield tag.H3("Items")
+        yield tag.UL().start()
         for childItem in self.getChildItems():
-            yield "<li><a href=\"%s\">%s</a></li>" % (childItem.url(), h(childItem.name))
-        yield "</ul>"
+            yield tag.LI(tag.A(h(childItem.name), href = childItem.url()))
+        yield tag.UL().end()
         
     @byView("tree", showZipItems)
     def showZipItemsAsTree(self, view = None):
-        yield "<h3>Items (Tree)</h3>"
-        yield "<ul>"
+        yield tag.H3("Items (Tree)")
+        yield tag.UL().start()
         zipItemsTree = ZipItemsTree()
         pathLength = len(self.path)
         for zipInfo in self.getZipInfos():
@@ -228,17 +229,16 @@ class ZipFileDir(AttributeResource):
             if itemName != "":
                 zipItemsTree.addPath(itemName, ZipItem(self, itemName))
         yield zipItemsTree.asHtml()
-        yield "</ul>"
-        
+        yield tag.UL().end()
         
     def html(self, view):
         """HTML content for this resource."""
         yield tag.P("Views: ", self.viewLinksHtml(ZipFileDir.viewsAndDescriptions, view))
-        yield "<p>Zip file: <a href=\"%s\">%s</a></p>" % (self.zipFile.url(), self.zipFile.heading())
+        yield tag.P("Zip file: ", tag.A(self.zipFile.heading(), href = self.zipFile.url()))
         parentDir = self.parent()
         if parentDir:
             parentPath = parentDir.path
-            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(), parentPath)
+            yield tag.P("Parent: ", tag.A(h(parentPath), href = parentDir.url()))
         for text in self.showZipItems[view.type](self): yield text
 
 import tempfile
@@ -304,25 +304,20 @@ class ZipItem(AttributeResource):
     
     def zipInfoHtml(self):
         zipInfo = self.getZipInfo()
-        buffer = io.StringIO()
-        buffer.write("<h3>Zip Info attributes</h3>")
-        buffer.write("<table>\n")
-        for attr in ZipItem.zipInfoAttributes:
-            buffer.write("<tr><td>%s:</td><td><b>%r</b></td>\n" % (attr, getattr(zipInfo, attr)))
-        buffer.write("</table>\n")
-        return buffer.getvalue()
+        return [tag.H3("Zip Info attributes"), 
+                tag.TABLE([tag.TR(tag.TD(attr, ":"), tag.TD(tag.B(hr(getattr(zipInfo, attr)))))
+                           for attr in ZipItem.zipInfoAttributes])]
     
     def asZipFileDir(self):
         return ZipFileDir(self.zipFile, self.name)
     
     def html(self, view):
         """HTML content for zip item. Somewhat similar to what is displayed for File resource."""
-        yield "<p><a href=\"%s\">Content</a>" % FileContents(self, "text/plain").url()
-        yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
-        yield "</p>"
+        yield tag.P(tag.A("Content", href = FileContents(self, "text/plain").url()), 
+                    " (", tag.A("html", href = FileContents(self, "text/html").url()), ")")
         if self.name.endswith("/"):
             zipFileDir = self.asZipFileDir()
-            yield "<p><a href =\"%s\">(as Zip directory)</a> " % zipFileDir.url()
+            yield tag.P(tag.A("(as Zip directory)", href = zipFileDir.url()))
         yield self.zipInfoHtml()
 
     @attribute(StringParam("contentType", optional = True))
