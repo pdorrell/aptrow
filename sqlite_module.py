@@ -60,17 +60,17 @@ class SqliteDatabase(BaseResource):
         items within the file."""
         yield tag.P("Resource ", tag.B(self.fileResource.htmlLink()), " interpreted as a Sqlite database")
         yield tag.H2("Master Tables")
-        yield "<ul>"
+        yield tag.UL().start()
         for tableName in ['sqlite_master']:
             table = self.table(tableName)
             yield tag.LI(tag.A(h(table.name), href = table.url()))
-        yield "</ul>"
+        yield tag.UL().end()
         yield tag.H2("Tables")
-        yield "<ul>"
+        yield tag.UL().start()
         for tableName in self.listTables():
             table = self.table(tableName)
             yield tag.LI(tag.A(h(table.name), href = table.url()))
-        yield "</ul>"
+        yield tag.UL().end()
         
     @attribute(StringParam("name"))
     def table(self, name):
@@ -110,16 +110,16 @@ class SqliteTable(AttributeResource):
                 yield (False, row)
                 
     def listQueryResultsInHtmlTable(self, query, args = []):
-        yield "<table border=1>"
+        yield tag.TABLE(border = 1).start()
         for isHeader, row in self.listQueryResults(query):
-            yield "<tr>%s</tr>" % "".join(["<td>%s</td>" % h(str(item)) for item in row])
-        yield "</table>"
+            yield tag.TR([tag.TD(h(str(item))) for item in row])
+        yield tag.TABLE().end()
     
     def html(self, view):
         """HTML content for this resource. Link back to base file resource, and list
         items within the file."""
-        yield "<p><a href=\"%s\">Database</a></p>" % self.database.url()
-        yield "<h2>Table Info</h2>"
-        for text in self.listQueryResultsInHtmlTable("pragma table_info(\"%s\")" % self.name): yield text
-        yield "<h2>Rows</h2>"
-        for text in self.listQueryResultsInHtmlTable("SELECT * FROM \"%s\"" % self.name): yield text
+        yield tag.P(tag.A("Database", href = self.database.url()))
+        yield tag.H2("Table Info")
+        for element in self.listQueryResultsInHtmlTable("pragma table_info(\"%s\")" % self.name): yield element
+        yield tag.H2("Rows")
+        for element in self.listQueryResultsInHtmlTable("SELECT * FROM \"%s\"" % self.name): yield element
