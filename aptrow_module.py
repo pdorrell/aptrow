@@ -34,12 +34,10 @@ class AptrowResource(BaseResource):
         return "Aptrow"
     
     def html(self, view):
-        yield "<p>Information about the Aptrow application"
-        yield "<h2>Resource modules</h2><ul>"
-        for prefix, resourceModule in resourceModules.items():
-            yield "<li><a href=\"%s\">%s</a></li>" % (ResourceModuleResource(prefix).url(), 
-                                                                          h(prefix))
-        yield "</ul>"
+        yield tag.P("Information about the Aptrow application")
+        yield tag.H2("Resource modules")
+        yield tag.UL([tag.LI(tag.A(h(prefix), href = ResourceModuleResource(prefix).url()))
+                      for prefix, resourceModule in resourceModules.items()])
         
 @resourceTypeNameInModule("module", aptrowModule)
 class ResourceModuleResource(BaseResource):
@@ -63,15 +61,15 @@ class ResourceModuleResource(BaseResource):
             raise NoSuchObjectException ("No such Aptrow resource module: %r" % self.prefix)
     
     def html(self, view):
-        yield "<p>Information about Aptrow resource module %s</p>" % self.prefix
+        yield tag.P("Information about Aptrow resource module ", tag.B(self.prefix))
         resourceModule = resourceModules[self.prefix]
-        yield "<h2>Resource types</h2>"
-        yield "<table><thead><tr><td>Type</td><td>Python Class</td></tr></thead>"
-        yield "<tbody>"
-        for resourceType, resourceClass in resourceModule.classes.items():
-            yield "<tr><td><a href=\"%s\">%s</a></td><td>%s</td></tr>" % (ResourceTypeResource(self.prefix, resourceType).url(), 
-                                                                          h(resourceType), h(resourceClass.__name__))
-        yield "</tbody></table>"
+        yield tag.H2("Resource types")
+        yield tag.TABLE(tag.THEAD(tag.TR(tag.TD("Type"), tag.TD("Python Class"))), 
+                        tag.TBODY([tag.TR(tag.TD(tag.A(h(resourceType), 
+                                                       href = ResourceTypeResource(self.prefix, resourceType).url())), 
+                                          tag.TD(h(resourceClass.__name__)))
+                                   for resourceType, resourceClass in resourceModule.classes.items()]), 
+                        border = 1)
 
 @resourceTypeNameInModule("resourceType", aptrowModule)
 class ResourceTypeResource(BaseResource):
@@ -99,16 +97,14 @@ class ResourceTypeResource(BaseResource):
             raise NoSuchObjectException ("No such Aptrow resource type: %r in module %s" % (self.type, self.prefix))
 
     def html(self, view):
-        yield "<p>Information about Aptrow resource type %s</p>" % self.type
+        yield tag.P("Information about Aptrow resource type ", tag.B(self.type))
         resourceModule = resourceModules[self.prefix]
         resourceClass = resourceModule.classes[self.type]
         params = resourceClass.resourceParams
-        yield "<p>Resource parameters:<ul>"
-        for param in params:
-            yield "<li>%s</li>" % param.description()
-        yield "</ul></p>"
+        yield tag.P("Resource parameters:", tag.UL([tag.LI(param.description()) 
+                                                    for param in params]))
 
-@resourceTypeNameInModule("aptrow", aptrowModule)
+@resourceTypeNameInModule("resource", aptrowModule)
 class ResourceResource(BaseResource):
     """A resource representing itself as an Aptrow resource (to allow reflection within Aptrow) """
     resourceParams = [ResourceParam("resource")]

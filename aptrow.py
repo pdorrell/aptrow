@@ -184,8 +184,6 @@ class AptrowApp:
         try:
             object, view = getResourceAndViewFromPathAndQuery(pathInfo, queryString)
             object.checkExists()
-            #msg = "<p>AppClass sez, you requested <strong>%s</strong> with query string <b>%s</b></p>"
-            #self.message = msg % (h(pathInfo), hr(queryString))
             self.message = ""
             for text in object.page(self, view): yield text
         except MissingParameterException as exc:
@@ -460,7 +458,7 @@ class ResourceParam(Param):
         return "Resource"
     
     def reflectionHtml(self, value):
-        return "%s =<br/>%s" % (h(self.name), value.reflectionHtml())
+        return [h(self.name), " =", tag.BR(), value.reflectionHtml()]
     
 def getResourceParams(queryParams, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
@@ -531,7 +529,7 @@ class Resource:
         return attributeParams
     
     def page(self, app, view):
-        for element in self.htmlPage(app, view): yield str(element)
+        for element in self.htmlPage(app, view): yield tag.toString(element)
     
     def htmlPage(self, app, view):
         """Return the web page for the resource. Default is to return an HTML page
@@ -576,13 +574,13 @@ class Resource:
         maxDepths = 4
         if view.type == "tree" and view.depth != None:
             maxDepths = view.depth+2
-        return "".join([str(self.viewLink(View("list"), "list", view)), 
-                        " ", 
-                        str(self.viewLink(View("tree"), "tree", view)), 
-                        "(depth: "] +
-                       spacedList([str(self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view))
-                                   for depth in range(1, maxDepths+1)]) +
-                       [")"])
+        return [self.viewLink(View("list"), "list", view), 
+                " ", 
+                self.viewLink(View("tree"), "tree", view), 
+                "(depth: ", 
+                spacedList([self.viewLink(View("tree", {"depth": str(depth)}), str(depth), view)
+                            for depth in range(1, maxDepths+1)]),
+                ")"]
 
 class BaseResource(Resource):
     """Base class for Resource classes representing resources constructed directly 
@@ -611,21 +609,19 @@ class BaseResource(Resource):
         return urlString
     
     def getAttributeHtml(self, attribute, params):
-        print ("attribute = %r, params = %r" % (attribute, params))
         paramHtmls = ["%s = \"%s\"" % (h(param), h(value)) for param,value in params.items()]
-        return "<b>%s</b> <b>%s</b>(%s)" % ("->", h(attribute), ", ".join(paramHtmls))
+        return [tag.B("->"), " ", tag.B(h(attribute)), "(",  ", ".join(paramHtmls), ")"]
     
     def reflectionHtml(self, attributesAndParams = []):
         """Output HTML showing the parameters that define this resource"""
         resourceParamsAndValues = zip(self.__class__.resourceParams, self.resourceParamValues)
         paramValuesHtmls = [param.reflectionHtml(value) for (param, value) in resourceParamsAndValues]
-        paramValuesListItems = ["<li>%s</li>" % html for html in paramValuesHtmls]
+        paramValuesListItems = [tag.LI(html) for html in paramValuesHtmls]
         attributesAndParamsHtmls = [self.getAttributeHtml(attribute, params) 
                                    for attribute, params in attributesAndParams]
-        attributeAndParamItems = ["<br/>%s" % html for html in attributesAndParamsHtmls]
-        return "<b>%s:</b><ul>%s</ul>%s" % (h(self.__class__.__name__), 
-                                            "".join(paramValuesListItems), 
-                                            "".join(attributeAndParamItems))
+        attributeAndParamItems = [ [tag.BR(), html] for html in attributesAndParamsHtmls]
+        return [tag.B(h(self.__class__.__name__), ":"), tag.UL(*paramValuesListItems), 
+                attributeAndParamItems]
     
 class AttributeResource(Resource):
     """Base class for Resource classes representing resources which are constructed as attributes

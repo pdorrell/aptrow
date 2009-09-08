@@ -59,10 +59,10 @@ class Directory(BaseResource):
     
     def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""
-        yield "<p>Views: %s</p>" % self.listAndTreeViewLinks(view)
+        yield tag.P("Views ", *self.listAndTreeViewLinks(view))
         parentDir = self.parent()
         if parentDir:
-            yield "<p>Parent: <a href=\"%s\">%s</a></p>" % (parentDir.url(view = view), parentDir.path)
+            yield tag.P("Parent: ", tag.A(h(parentDir.path), href = parentDir.url(view = view)))
         for text in self.showFilesAndDirectories[view.type](self, view): yield text
             
     @attribute()
@@ -90,37 +90,38 @@ class Directory(BaseResource):
         if depth == None:
             depth = view.depth
         dirEntries, fileEntries = self.getDirAndFileEntries()
-        yield "<ul>"
+        yield tag.UL().start()
         for name, entry in fileEntries:
             print (entry.heading())
-            yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
+            yield tag.LI(tag.A(h(name), href = entry.url()))
         for name, entry in dirEntries:
             print (entry.heading())
-            yield "<li><a href = \"%s\">%s</a>" % (entry.url(view = view), h(name))
+            yield tag.LI().start()
+            yield tag.A(h(name), href = entry.url(view = view))
             if depth == None or depth > 1:
-                for text in entry.showFilesAndDirectoriesAsTree(view, view.depthLessOne()): 
-                    yield text
+                for element in entry.showFilesAndDirectoriesAsTree(view, view.depthLessOne()): 
+                    yield element
             else:
                 yield " ..."
-            yield "</li>"
-        yield "</ul>"
+            yield tag.LI().end()
+        yield tag.UL().end()
         
     @byView("list", showFilesAndDirectories)
     def showFilesAndDirectoriesAsList(self, view):
         """ Show each of files and sub-directories as a list of links to those resources."""
         dirEntries, fileEntries = self.getDirAndFileEntries()
         if len(dirEntries) > 0:
-            yield "<h3>Sub-directories</h3>"
-            yield "<ul>"
+            yield tag.H3("Sub-directories")
+            yield tag.UL().start()
             for name, entry in dirEntries:
-                yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(view = view), h(name))
-            yield "</ul>"
+                yield tag.LI(tag.A(h(name), href = entry.url(view = view)))
+            yield tag.UL().end()
         if len(fileEntries) > 0:
-            yield "<h3>Files</h3>"
-            yield "<ul>"
+            yield tag.H3("Files")
+            yield tag.UL().start()
             for name, entry in fileEntries:
-                yield "<li><a href = \"%s\">%s</a></li>" % (entry.url(), h(name))
-            yield "</ul>"
+                yield tag.LI(tag.A(h(name), href = entry.url()))
+            yield tag.UL().end()
     
 @resourceTypeNameInModule("file", aptrowModule)
 class File(BaseResource):
@@ -173,13 +174,12 @@ class File(BaseResource):
         """HTML content for file: show various details, including links to contents
         and to alternative views of the file."""
         fileSize = os.path.getsize(self.path)
-        yield "<p>Information about file <b>%s</b>: %s bytes</p>" % (h(self.path), fileSize)
+        yield tag.P("Information about file ", tag.B(h(self.path)), ": ", fileSize, " bytes")
         directory = self.dir()
-        yield "<p>Containing directory: <a href=\"%s\">%s</a></p>" % (directory.url(), h(directory.path))
-        yield "<p><a href =\"%s\">contents</a>" % FileContents(self).url()
-        yield " (<a href =\"%s\">text</a>)" % FileContents(self, "text/plain").url()
-        yield " (<a href =\"%s\">html</a>)" % FileContents(self, "text/html").url()
-        yield "</p>"
+        yield tag.P("Containing directory: ", tag.A(h(directory.path), href = directory.url()))
+        yield tag.P(tag.A("contents", href = FileContents(self).url()), 
+                    " (", tag.A("text", href = FileContents(self, "text/plain").url()), ")", 
+                    " (", tag.A("html", href = FileContents(self, "text/html").url()), ")")
         
     @attribute(StringParam("contentType", optional = True))
     def contents(self, contentType):
