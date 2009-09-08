@@ -12,6 +12,7 @@
   If not, see <http://www.gnu.org/licenses/>."""
 
 from aptrow import *
+import htmltags as tag
 
 # Aptrow module presenting a character string (encoded in the URL) as a resource
 
@@ -40,5 +41,4 @@ class String(BaseResource):
     
     def html(self, view):
         """HTML content for string: show it in bold."""
-        yield "<p>String: <b>%s</b></p>" % h(self.value)
-        
+        yield tag.P("String: ", tag.B(h(self.value)))
