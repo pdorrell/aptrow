@@ -221,12 +221,14 @@ class SearchForFileInDirectory(AttributeResource):
         dirEntries, fileEntries = directory.getDirAndFileEntries()
         for name, fileResource in fileEntries:
             if name.find(self.pattern) != -1:
-                fileRelativePath = name if relativePath == None else os.join(relativePath, name)
+                fileRelativePath = name if relativePath == None else os.path.join(relativePath, name)
                 yield fileResource, fileRelativePath
         for name, dirResource in dirEntries:
+            dirRelativePath = name if relativePath == None else os.path.join(relativePath, name)
             if name.find(self.pattern) != -1:
-                dirRelativePath = name if relativePath == None else os.join(relativePath, name)
                 yield dirResource, dirRelativePath
+            for resourceAndPath in self.filesContainingPattern(dirResource, dirRelativePath):
+                yield resourceAndPath
     
     def html(self, view):
         """Show results of search for a file containing a pattern in the directory"""
