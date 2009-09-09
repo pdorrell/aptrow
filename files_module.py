@@ -216,8 +216,23 @@ class SearchForFileInDirectory(AttributeResource):
     
     def checkExists(self):
         self.directory.checkExists()
+        
+    def filesContainingPattern(self, directory, relativePath = None):
+        dirEntries, fileEntries = directory.getDirAndFileEntries()
+        for name, fileResource in fileEntries:
+            if name.find(self.pattern) != -1:
+                fileRelativePath = name if relativePath == None else os.join(relativePath, name)
+                yield fileResource, fileRelativePath
+        for name, dirResource in dirEntries:
+            if name.find(self.pattern) != -1:
+                dirRelativePath = name if relativePath == None else os.join(relativePath, name)
+                yield dirResource, dirRelativePath
     
     def html(self, view):
         """Show results of search for a file containing a pattern in the directory"""
         yield tag.P(tag.A("Directory", href = self.directory.url()))
         yield tag.P ("Results of search ...")
+        yield tag.UL().start()
+        for resource, relativePath in self.filesContainingPattern(self.directory):
+            yield tag.LI(tag.A(h(relativePath), href = resource.url()))
+        yield tag.UL().end()
