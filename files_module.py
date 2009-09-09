@@ -85,6 +85,11 @@ class Directory(BaseResource):
         else:
             return Directory(parentPath)
         
+    @attribute(StringParam("pattern"))
+    def search(self, pattern):
+        """Search for a file containing pattern in name."""
+        return SearchForFileInDirectory(self, pattern)
+        
     def getDirAndFileEntries(self):
         entryNames = os.listdir(self.path)
         entries = [(name, self.fileEntry(name)) for name in entryNames]
@@ -197,3 +202,22 @@ class File(BaseResource):
         """Return contents of file with optional content type"""
         return FileContents(self, contentType)
         
+class SearchForFileInDirectory(AttributeResource):
+    def __init__(self, directory, pattern):
+        self.directory = directory
+        self.pattern = pattern
+        
+    def baseObjectAndParams(self):
+        return (self.directory, "search", {"pattern": self.pattern})
+    
+    def heading(self):
+        """Default heading to describe this resource (plain text, no HTML)"""
+        return "Search for %r in %s" % (self.pattern, self.directory.heading())
+    
+    def checkExists(self):
+        self.directory.checkExists()
+    
+    def html(self, view):
+        """Show results of search for a file containing a pattern in the directory"""
+        yield tag.P(tag.A("Directory", href = self.directory.url()))
+        yield tag.P ("Results of search ...")
