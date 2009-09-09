@@ -608,6 +608,20 @@ class BaseResource(Resource):
             urlString += "&%s" % urllib.parse.urlencode(view.htmlParamsDict())
         return urlString
     
+    def formActionParamsAndCount(self, attributesAndParams = []):
+        """Return form action, params (for hidden inputs) and count (for additional attribute params)"""
+        action = "%s/%s" % (self.modulePrefix(), self.__class__.resourcePath)
+        params = []
+        for key, values in self.urlParams().items():
+            for value in values:
+                params.append((key, value))
+        count = 0
+        for attribute,params in attributesAndParams:
+            count += 1
+            for key, value in self.attributeUrlParams(attribute, count, params).items():
+                params.append((key, value))
+        return action, params, count
+    
     def getAttributeHtml(self, attribute, params):
         paramHtmls = ["%s = \"%s\"" % (h(param), h(value)) for param,value in params.items()]
         return [tag.B("->"), " ", tag.B(h(attribute)), "(",  ", ".join(paramHtmls), ")"]
@@ -637,6 +651,11 @@ class AttributeResource(Resource):
         attribute lookups before creating the full URL."""
         baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
         return baseObject.url(baseObjectAttributesAndParams, view = view)
+    
+    def formActionParamsAndCount(self, attributesAndParams = []):
+        """Return form action, params (for hidden inputs) and count (for additional attribute params)"""
+        baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
+        return baseObject.formActionParamsAndCount(baseObjectAttributesAndParams)
                                       
     def reflectionHtml(self, attributesAndParams = []):
         baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)

@@ -58,8 +58,14 @@ class Directory(BaseResource):
         return View("list")
     
     def fileSearchForm(self):
-        return tag.FORM("Search for file: ", tag.INPUT(type = "text", length = 30), 
-                        tag.INPUT(type = "submit", name = "Search"))
+        action, params, count = self.formActionParamsAndCount()
+        count += 1
+        return tag.formWithParams(action, params, 
+                                  "Search for file: ", 
+                                  tag.INPUT(name = "_%s" % count, value = "search", type = "hidden"), 
+                                  tag.INPUT(name = "_%s.pattern" % count, 
+                                            type = "text", length = 30), tag.NBSP, 
+                                  tag.INPUT(type = "submit", value = "Search"))
     
     def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""

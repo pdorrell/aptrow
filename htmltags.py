@@ -67,3 +67,10 @@ htmlTagNames = ["h1", "h2", "h3", "h4", "h5", "h6", "a", "p", "b", "ul", "li", "
 are capitalized, e.g. UL for <ul> tag)."""
 for tagName in htmlTagNames:
     globals()[tagName.upper()] = tagFunction(tagName)
+
+NBSP = "&nbsp;"
+
+def formWithParams(action, params, *elements):
+    return FORM([INPUT(name = key, value = value, type = "hidden") 
+                 for key, value in params], 
+                elements, action = action)
