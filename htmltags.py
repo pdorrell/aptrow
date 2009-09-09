@@ -23,8 +23,8 @@ def toString(data):
 
 class Tag:
     """Class representing an HTML tag element. Has name, child elements, and attributes."""
-    def __init__(self, name, *children, **attributes):
-        self.name = name
+    def __init__(self, tagName, *children, **attributes):
+        self.tagName = tagName
         self.children = children
         self.attributes = attributes
         
@@ -46,21 +46,22 @@ class Tag:
             attributesString = " %s" % " ".join(["%s=\"%s\"" % (key, value) 
                                                  for key, value in self.attributes.items()])
         closeSlash = "/" if closed else ""
-        return "<%s%s%s>" % (self.name, attributesString, closeSlash)
+        return "<%s%s%s>" % (self.tagName, attributesString, closeSlash)
     
     def end(self):
         """Output HTML string for closing tag for this element"""
-        return "</%s>" % self.name
+        return "</%s>" % self.tagName
     
-def tagFunction(name):
+def tagFunction(tagName):
     """Return a function for creating a Tag object with specified name"""
     def func(*children, **attributes): 
-        return Tag(name, *children, **attributes)
+        return Tag(tagName, *children, **attributes)
     return func
 
 """List of HTML tags (incomplete at the moment)"""
 htmlTagNames = ["h1", "h2", "h3", "h4", "h5", "h6", "a", "p", "b", "ul", "li", "small", "br", 
-                "table", "thead", "tbody", "tr", "tr", "td"]
+                "table", "thead", "tbody", "tr", "tr", "td", 
+                "form", "input", "submit"]
 
 """Define tag functions for names in htmlTagNames (function names 
 are capitalized, e.g. UL for <ul> tag)."""

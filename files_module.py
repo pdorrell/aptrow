@@ -57,12 +57,17 @@ class Directory(BaseResource):
     def defaultView(self):
         return View("list")
     
+    def fileSearchForm(self):
+        return tag.FORM("Search for file: ", tag.INPUT(type = "text", length = 30), 
+                        tag.INPUT(type = "submit", name = "Search"))
+    
     def html(self, view):
         """HTML content for directory: show lists of files and sub-directories."""
         yield tag.P("Views ", *self.listAndTreeViewLinks(view))
         parentDir = self.parent()
         if parentDir:
             yield tag.P("Parent: ", tag.A(h(parentDir.path), href = parentDir.url(view = view)))
+        yield self.fileSearchForm()
         for text in self.showFilesAndDirectories[view.type](self, view): yield text
             
     @attribute()
