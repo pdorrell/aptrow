@@ -142,24 +142,27 @@ class ZipFile(BaseResource):
         """Return a named item from this zip file as a ZipFileDir resource"""
         return ZipFileDir(self, path)
     
-class ZipFileDir(AttributeResource):
+@resourceTypeNameInModule("dir", aptrowModule)
+class ZipFileDir(BaseResource):
     """A resource representing a directory within a zip file. Considered to exist if the path
     name ends in '/', and, either (1) a corresponding Zip item exists, or (2) other Zip items exist 
     with the path as a prefix. The root directory is represented by '/', even though for matching
     purposes, it is really ''."""
+    
+    resourceParams = [ResourceParam("zipfile"), StringParam("path")]
     
     def __init__(self, zipFile, path):
         self.zipFile = zipFile
         self.path = path
         self.matchPath = "" if path == "/" else path
         
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource."""
+        return {"zipfile": [self.zipFile.url()], "path": [self.path]}
+    
     def isRoot(self):
         return self.path == "/"
     
-    def baseObjectAndParams(self):
-        """This resource is defined as a named 'dir' attribute of the enclosing ZipFile resource."""
-        return (self.zipFile, "dir", {"path": self.path})
-        
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Directory %s in %s" % (self.path, self.zipFile.heading())
