@@ -18,14 +18,14 @@ import sqlite3
 aptrowModule = ResourceModule()
 
 @resourceTypeNameInModule("database", aptrowModule)
-class SqliteDatabase(BaseResource):
+class SqliteDatabase(Resource):
 
     """A resource representing a sqlite database"""
     
     resourceParams = [ResourceParam("file")]
 
     def __init__(self, fileResource):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.fileResource = fileResource
 
     def urlParams(self):
@@ -77,14 +77,14 @@ class SqliteDatabase(BaseResource):
         return SqliteTable(self, name)
 
 @resourceTypeNameInModule("table", aptrowModule)
-class SqliteTable(BaseResource):
+class SqliteTable(Resource):
     
     """A resource representing a sqlite table"""
     
     resourceParams = [ResourceParam("database"), StringParam("name")]
     
     def __init__(self, database, name):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.database = database
         self.name = name
         

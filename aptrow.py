@@ -75,7 +75,7 @@ aptrowModule = ResourceModule()
 
 def resourceTypeNameInModule(name, module):
     """ Class decorator to define the resource type (i.e. 2nd part of URL) 
-    for a base resource class, i.e. a class derived from BaseResource, relative to a ResourceModule """
+    for a base resource class, i.e. a class derived from Resource, relative to a ResourceModule """
     def registerResourceClass(resourceClass):
         print("Registering resource class %s" % (resourceClass.__name__))
         module.classes[name] = resourceClass
@@ -487,6 +487,9 @@ class AttributeMethod:
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
     
+    def __init__(self):
+        self.module = None
+        
     def checkExists(self):
         """Default existence check: always passes.
         Resource objects are always created from URL definitions. Often they represent information
@@ -584,13 +587,6 @@ class Resource:
                             for depth in range(1, maxDepths+1)]),
                 ")"]
 
-class BaseResource(Resource):
-    """Base class for Resource classes representing resources constructed directly 
-    from registered resource types."""
-    
-    def __init__(self):
-        self.module = None
-        
     def modulePrefix(self):
         if hasattr(self.__class__, "module"):
             return "/" + self.__class__.module.urlPrefix
@@ -639,32 +635,8 @@ class BaseResource(Resource):
         return [tag.B(h(self.__class__.__name__), ":"), tag.UL(*paramValuesListItems), 
                 attributeAndParamItems]
     
-class AttributeResource(Resource):
-    """Base class for Resource classes representing resources which are constructed as attributes
-    of other resources. """
-    
-    def getBaseObjectAttributesAndParams(self, attributesAndParams = []):
-        baseObject, attribute, params = self.baseObjectAndParams()
-        return baseObject, [(attribute, params)] + attributesAndParams
-    
-    def url(self, attributesAndParams = [], view = None):
-        """Construct a URL for this resource, by determining the details for the base object and
-        the attribute parameters used to look up this object, then append any additional supplied
-        attribute lookups before creating the full URL."""
-        baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
-        return baseObject.url(baseObjectAttributesAndParams, view = view)
-    
-    def formActionParamsAndCount(self, attributesAndParams = []):
-        """Return form action, params (for hidden inputs) and count (for additional attribute params)"""
-        baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
-        return baseObject.formActionParamsAndCount(baseObjectAttributesAndParams)
-                                      
-    def reflectionHtml(self, attributesAndParams = []):
-        baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
-        return baseObject.reflectionHtml(baseObjectAttributesAndParams)
-                                     
 @resourceTypeNameInModule("contents", aptrowModule)
-class FileContents(BaseResource):
+class FileContents(Resource):
     """A resource representing the contents of a file, to be returned directly
     to the web browser (with an optionally specified content type). The 'file'
     can be any resource which has a suitable 'openBinaryFile()' method."""
@@ -672,7 +644,7 @@ class FileContents(BaseResource):
     resourceParams = [ResourceParam("file"), StringParam("contentType")]
     
     def __init__(self, file, contentType = None):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.file = file
         self.contentType = contentType
         

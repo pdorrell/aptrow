@@ -19,7 +19,7 @@ import htmltags as tag
 aptrowModule = ResourceModule()
 
 @resourceTypeNameInModule("string", aptrowModule)
-class String(BaseResource):
+class String(Resource):
     """A resource representing a String value. (There is no external resource, as the 
     string is provided as a parameter. This resource type is mostly useful for testing, 
     for example to test HTML quoting. But it could have other uses, for example to display
@@ -28,7 +28,7 @@ class String(BaseResource):
     resourceParams = [StringParam("value")]
 
     def __init__(self, value):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.value = value
         
     def urlParams(self):

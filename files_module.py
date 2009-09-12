@@ -18,13 +18,13 @@ from aptrow import *
 aptrowModule = ResourceModule()
         
 @resourceTypeNameInModule("dir", aptrowModule)
-class Directory(BaseResource):
+class Directory(Resource):
     """A resource representing a directory on the local file system."""
 
     resourceParams = [StringParam("path")]
     
     def __init__(self, path):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.path = os.path.normpath(path)
         
     def urlParams(self):
@@ -140,7 +140,7 @@ class Directory(BaseResource):
             yield tag.UL().end()
     
 @resourceTypeNameInModule("file", aptrowModule)
-class File(BaseResource):
+class File(Resource):
     """A resource representing a file on the local file system."""
 
     resourceParams = [StringParam("path")]
@@ -148,7 +148,7 @@ class File(BaseResource):
     resourceInterfaces = [fileLikeResource]
 
     def __init__(self, path):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.path = os.path.normpath(path)
         
     def urlParams(self):
@@ -203,12 +203,12 @@ class File(BaseResource):
         return FileContents(self, contentType)
         
 @resourceTypeNameInModule("searchForFile", aptrowModule)
-class SearchForFileInDirectory(BaseResource):
+class SearchForFileInDirectory(Resource):
 
     resourceParams = [ResourceParam("dir"), StringParam("pattern")]
 
     def __init__(self, directory, pattern):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.directory = directory
         self.pattern = pattern
         

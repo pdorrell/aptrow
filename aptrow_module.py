@@ -18,13 +18,13 @@ from aptrow import *
 aptrowModule = ResourceModule()
     
 @resourceTypeNameInModule("aptrow", aptrowModule)
-class AptrowResource(BaseResource):
+class AptrowResource(Resource):
     """A resource representing the Aptrow application itself"""
     
     resourceParams = []
     
     def __init__(self):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
     
     def urlParams(self):
         return {}
@@ -40,13 +40,13 @@ class AptrowResource(BaseResource):
                       for prefix, resourceModule in resourceModules.items()])
         
 @resourceTypeNameInModule("module", aptrowModule)
-class ResourceModuleResource(BaseResource):
+class ResourceModuleResource(Resource):
     """A resource representing an Aptrow Module."""
     
     resourceParams = [StringParam("prefix")]
     
     def __init__(self, prefix):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.prefix = prefix
         
     def urlParams(self):
@@ -72,13 +72,13 @@ class ResourceModuleResource(BaseResource):
                         border = 1)
 
 @resourceTypeNameInModule("resourceType", aptrowModule)
-class ResourceTypeResource(BaseResource):
+class ResourceTypeResource(Resource):
     """A resource representing a resource type"""
     
     resourceParams = [StringParam("prefix"), StringParam("type")]
     
     def __init__(self, prefix, type):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.prefix = prefix
         self.type = type
         
@@ -105,12 +105,12 @@ class ResourceTypeResource(BaseResource):
                                                     for param in params]))
 
 @resourceTypeNameInModule("resource", aptrowModule)
-class ResourceResource(BaseResource):
+class ResourceResource(Resource):
     """A resource representing itself as an Aptrow resource (to allow reflection within Aptrow) """
     resourceParams = [ResourceParam("resource")]
     
     def __init__(self, resource):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.resource = resource
     
     def urlParams(self):

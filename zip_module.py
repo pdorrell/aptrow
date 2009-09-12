@@ -52,7 +52,7 @@ class ZipItemsTree:
                            for subdir in subdirKeys])
         
 @resourceTypeNameInModule("zip", aptrowModule)
-class ZipFile(BaseResource):
+class ZipFile(Resource):
     """A resource representing a Zip file, which gives access to the items within the Zip file
     as nested resources. The ZipFile resource needs to be created from a 'file' resource, where
     the 'file' can be anything with a suitable 'openBinaryFile()' method."""
@@ -60,7 +60,7 @@ class ZipFile(BaseResource):
     resourceParams = [ResourceParam("file")]
 
     def __init__(self, fileResource):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.fileResource = fileResource
         
     def urlParams(self):
@@ -143,7 +143,7 @@ class ZipFile(BaseResource):
         return ZipFileDir(self, path)
     
 @resourceTypeNameInModule("dir", aptrowModule)
-class ZipFileDir(BaseResource):
+class ZipFileDir(Resource):
     """A resource representing a directory within a zip file. Considered to exist if the path
     name ends in '/', and, either (1) a corresponding Zip item exists, or (2) other Zip items exist 
     with the path as a prefix. The root directory is represented by '/', even though for matching
@@ -152,7 +152,7 @@ class ZipFileDir(BaseResource):
     resourceParams = [ResourceParam("zipfile"), StringParam("path")]
     
     def __init__(self, zipFile, path):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.zipFile = zipFile
         self.path = path
         self.matchPath = "" if path == "/" else path
@@ -248,7 +248,7 @@ class ZipFileDir(BaseResource):
 import tempfile
         
 @resourceTypeNameInModule("item", aptrowModule)
-class ZipItem(BaseResource):
+class ZipItem(Resource):
     """A resource representing a named item within a zip file. (Note: current implementation
     specifies name only, so if there are multiple items with the same name -- something generally
     to be avoided when creating zip files, but it can happen -- there is currently no way to access 
@@ -259,7 +259,7 @@ class ZipItem(BaseResource):
     resourceInterfaces = [fileLikeResource]
 
     def __init__(self, zipFile, name):
-        BaseResource.__init__(self)
+        Resource.__init__(self)
         self.zipFile = zipFile
         self.name = name
         
