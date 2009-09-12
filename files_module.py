@@ -202,14 +202,20 @@ class File(BaseResource):
         """Return contents of file with optional content type"""
         return FileContents(self, contentType)
         
-class SearchForFileInDirectory(AttributeResource):
+@resourceTypeNameInModule("searchForFile", aptrowModule)
+class SearchForFileInDirectory(BaseResource):
+
+    resourceParams = [ResourceParam("dir"), StringParam("pattern")]
+
     def __init__(self, directory, pattern):
+        BaseResource.__init__(self)
         self.directory = directory
         self.pattern = pattern
         
-    def baseObjectAndParams(self):
-        return (self.directory, "search", {"pattern": self.pattern})
-    
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource."""
+        return {"dir": [self.directory.url()], "pattern": [self.pattern]}
+
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Search for %r in %s" % (self.pattern, self.directory.heading())
