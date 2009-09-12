@@ -152,6 +152,7 @@ class ZipFileDir(BaseResource):
     resourceParams = [ResourceParam("zipfile"), StringParam("path")]
     
     def __init__(self, zipFile, path):
+        BaseResource.__init__(self)
         self.zipFile = zipFile
         self.path = path
         self.matchPath = "" if path == "/" else path
@@ -246,21 +247,25 @@ class ZipFileDir(BaseResource):
 
 import tempfile
         
-class ZipItem(AttributeResource):
+@resourceTypeNameInModule("item", aptrowModule)
+class ZipItem(BaseResource):
     """A resource representing a named item within a zip file. (Note: current implementation
     specifies name only, so if there are multiple items with the same name -- something generally
     to be avoided when creating zip files, but it can happen -- there is currently no way to access 
     them. Some additional information would have to be included in this resource class to handle multiple items.)"""
 
+    resourceParams = [ResourceParam("zipfile"), StringParam("name")]
+
     resourceInterfaces = [fileLikeResource]
 
     def __init__(self, zipFile, name):
+        BaseResource.__init__(self)
         self.zipFile = zipFile
         self.name = name
         
-    def baseObjectAndParams(self):
-        """This resource is defined as a named 'item' attribute of the enclosing ZipFile resource."""
-        return (self.zipFile, "item", {"name": self.name})
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource."""
+        return {"zipfile": [self.zipFile.url()], "name": [self.name]}
     
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
