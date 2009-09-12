@@ -23,8 +23,8 @@ class AptrowResource(Resource):
     
     resourceParams = []
     
-    def __init__(self):
-        Resource.__init__(self)
+    def init(self):
+        pass
     
     def urlParams(self):
         return {}
@@ -45,8 +45,7 @@ class ResourceModuleResource(Resource):
     
     resourceParams = [StringParam("prefix")]
     
-    def __init__(self, prefix):
-        Resource.__init__(self)
+    def init(self, prefix):
         self.prefix = prefix
         
     def urlParams(self):
@@ -77,8 +76,7 @@ class ResourceTypeResource(Resource):
     
     resourceParams = [StringParam("prefix"), StringParam("type")]
     
-    def __init__(self, prefix, type):
-        Resource.__init__(self)
+    def init(self, prefix, type):
         self.prefix = prefix
         self.type = type
         
@@ -109,8 +107,7 @@ class ResourceResource(Resource):
     """A resource representing itself as an Aptrow resource (to allow reflection within Aptrow) """
     resourceParams = [ResourceParam("resource")]
     
-    def __init__(self, resource):
-        Resource.__init__(self)
+    def init(self, resource):
         self.resource = resource
     
     def urlParams(self):

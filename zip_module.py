@@ -59,8 +59,7 @@ class ZipFile(Resource):
     
     resourceParams = [ResourceParam("file")]
 
-    def __init__(self, fileResource):
-        Resource.__init__(self)
+    def init(self, fileResource):
         self.fileResource = fileResource
         
     def urlParams(self):
@@ -151,8 +150,7 @@ class ZipFileDir(Resource):
     
     resourceParams = [ResourceParam("zipfile"), StringParam("path")]
     
-    def __init__(self, zipFile, path):
-        Resource.__init__(self)
+    def init(self, zipFile, path):
         self.zipFile = zipFile
         self.path = path
         self.matchPath = "" if path == "/" else path
@@ -258,8 +256,7 @@ class ZipItem(Resource):
 
     resourceInterfaces = [fileLikeResource]
 
-    def __init__(self, zipFile, name):
-        Resource.__init__(self)
+    def init(self, zipFile, name):
         self.zipFile = zipFile
         self.name = name
         

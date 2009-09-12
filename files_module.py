@@ -23,8 +23,7 @@ class Directory(Resource):
 
     resourceParams = [StringParam("path")]
     
-    def __init__(self, path):
-        Resource.__init__(self)
+    def init(self, path):
         self.path = os.path.normpath(path)
         
     def urlParams(self):
@@ -147,8 +146,7 @@ class File(Resource):
     
     resourceInterfaces = [fileLikeResource]
 
-    def __init__(self, path):
-        Resource.__init__(self)
+    def init(self, path):
         self.path = os.path.normpath(path)
         
     def urlParams(self):
@@ -207,8 +205,7 @@ class SearchForFileInDirectory(Resource):
 
     resourceParams = [ResourceParam("dir"), StringParam("pattern")]
 
-    def __init__(self, directory, pattern):
-        Resource.__init__(self)
+    def init(self, directory, pattern):
         self.directory = directory
         self.pattern = pattern
         

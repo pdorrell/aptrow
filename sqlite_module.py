@@ -24,8 +24,7 @@ class SqliteDatabase(Resource):
     
     resourceParams = [ResourceParam("file")]
 
-    def __init__(self, fileResource):
-        Resource.__init__(self)
+    def init(self, fileResource):
         self.fileResource = fileResource
 
     def urlParams(self):
@@ -83,8 +82,7 @@ class SqliteTable(Resource):
     
     resourceParams = [ResourceParam("database"), StringParam("name")]
     
-    def __init__(self, database, name):
-        Resource.__init__(self)
+    def init(self, database, name):
         self.database = database
         self.name = name
         

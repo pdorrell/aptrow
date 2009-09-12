@@ -27,8 +27,7 @@ class String(Resource):
     
     resourceParams = [StringParam("value")]
 
-    def __init__(self, value):
-        Resource.__init__(self)
+    def init(self, value):
         self.value = value
         
     def urlParams(self):

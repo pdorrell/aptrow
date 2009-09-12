@@ -487,8 +487,10 @@ class AttributeMethod:
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
     
-    def __init__(self):
+    def __init__(self, *args):
         self.module = None
+        self.args = args
+        self.init(*args)
         
     def checkExists(self):
         """Default existence check: always passes.
@@ -643,8 +645,7 @@ class FileContents(Resource):
 
     resourceParams = [ResourceParam("file"), StringParam("contentType")]
     
-    def __init__(self, file, contentType = None):
-        Resource.__init__(self)
+    def init(self, file, contentType = None):
         self.file = file
         self.contentType = contentType
         
