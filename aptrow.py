@@ -32,6 +32,7 @@ def hr(value):
     return h(value.__repr__())
 
 def spacedList(theList):
+    """Take a list and return a list with spaces inserted between the strings"""
     newList = [" "] * (len(theList)*2-1)
     for i, item in enumerate (theList):
         newList[i*2] = item
@@ -75,7 +76,7 @@ aptrowModule = ResourceModule()
 
 def resourceTypeNameInModule(name, module):
     """ Class decorator to define the resource type (i.e. 2nd part of URL) 
-    for a base resource class, i.e. a class derived from Resource, relative to a ResourceModule """
+    for a resource class, i.e. a class derived from Resource, relative to a ResourceModule """
     def registerResourceClass(resourceClass):
         print("Registering resource class %s" % (resourceClass.__name__))
         module.classes[name] = resourceClass
@@ -128,9 +129,9 @@ class UnknownAttributeException(MessageException):
 def getResourceAndViewFromPathAndQuery(path, query):
     """Look up resource object from URL path and query. This includes processing of parameters passed to the
     base resource type, and optionally the processing of attribute parameters, for when one resource is
-    defined as an attribute of another. (For example, a FileContents resource is the "contents" attribute
-    of a File resource, with additional optional parameter "contentType".) A numbering scheme allows attribute
-    lookups to be chained (see AptrowQueryParams for details). 
+    defined as an attribute of another. (For example, a FileContents resource can be specified as the 
+    "contents" attribute of a File resource, with additional optional parameter "contentType".) 
+    A numbering scheme allows attribute lookups to be chained (see AptrowQueryParams for details). 
     """
     secondSlashPos = path.find("/")
     if secondSlashPos != -1:
@@ -287,7 +288,8 @@ class View:
             return self.depth-1
         
     def __eq__(self, other):
-        """Is this view the same as another view."""
+        """Is this view the same as another view. 
+        (Used to implement the 'make-the-link-to-yourself-inactive' functionality.)"""
         return other != None and self.type == other.type and self.params == other.params
     
     def __repr__(self):
@@ -305,7 +307,7 @@ class View:
 class MethodsByViewType:
     """A dictionary of methods retrieved by view type. 
     Throws UnknownViewTypeException if view type is unknown.
-    Wraps a dict so that it throws an UnknownViewTypeException
+    Effectively wraps a dict so that it throws an UnknownViewTypeException
     if the view type is not defined.
     """
     def __init__(self):
@@ -584,6 +586,7 @@ class Resource:
             return None
         
     def viewLink(self, view, description, currentView):
+        """HTML for the link to another view (inactive if the 'other' view is same as this view) """
         if view == currentView:
             return h(description)
         else:

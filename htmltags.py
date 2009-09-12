@@ -71,6 +71,8 @@ for tagName in htmlTagNames:
 NBSP = "&nbsp;"
 
 def formWithParams(action, params, *elements):
+    """Create a form with supplied action, fixed parameter values (i.e. to include
+    as hidden inputs), and the rest of the form content."""
     return FORM([INPUT(name = key, value = value, type = "hidden") 
                  for key, value in params], 
                 elements, action = action)
