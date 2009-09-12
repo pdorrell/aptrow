@@ -17,6 +17,7 @@ from aptrow import addModule, runAptrowServer
 # define resource modules
 # format: addModule (<prefix>, <python module>)
 
+addModule ("base",    "aptrow")
 addModule ("files",   "files_module")
 addModule ("strings", "strings_module")
 addModule ("zip",     "zip_module")

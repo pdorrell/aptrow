@@ -71,6 +71,8 @@ class ResourceModule:
             raise ResourceTypeNotFoundForPathException("%s%s" % (self.urlPrefix, name))
         return resourceClass
         
+aptrowModule = ResourceModule()
+
 def resourceTypeNameInModule(name, module):
     """ Class decorator to define the resource type (i.e. 2nd part of URL) 
     for a base resource class, i.e. a class derived from BaseResource, relative to a ResourceModule """
@@ -661,18 +663,22 @@ class AttributeResource(Resource):
         baseObject, baseObjectAttributesAndParams = self.getBaseObjectAttributesAndParams(attributesAndParams)
         return baseObject.reflectionHtml(baseObjectAttributesAndParams)
                                      
-class FileContents(AttributeResource):
+@resourceTypeNameInModule("contents", aptrowModule)
+class FileContents(BaseResource):
     """A resource representing the contents of a file, to be returned directly
     to the web browser (with an optionally specified content type). The 'file'
     can be any resource which has a suitable 'openBinaryFile()' method."""
+
+    resourceParams = [ResourceParam("file"), StringParam("contentType")]
     
     def __init__(self, file, contentType = None):
+        BaseResource.__init__(self)
         self.file = file
         self.contentType = contentType
         
-    def baseObjectAndParams(self):
-        """This resource is assumed to be the 'contents' attribute of the corresponding 'file' resource."""
-        return (self.file, "contents", {"contentType": self.contentType})
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource."""
+        return {"file": [self.file.url()], "contentType": [self.contentType]}
     
     def checkExists(self):
         """This resource exists if the file resource exists."""
