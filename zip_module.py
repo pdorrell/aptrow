@@ -227,10 +227,10 @@ class ZipFileDir(BaseResource):
         yield tag.UL().start()
         zipItemsTree = ZipItemsTree()
         pathLength = len(self.path)
-        for zipInfo in self.getZipInfos():
-            itemName = zipInfo.filename[pathLength:]
+        for childItem in self.getChildItems():
+            itemName = childItem.name[pathLength:]
             if itemName != "":
-                zipItemsTree.addPath(itemName, ZipItem(self, itemName))
+                zipItemsTree.addPath(itemName, childItem)
         yield zipItemsTree.asHtml()
         yield tag.UL().end()
         
