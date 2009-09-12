@@ -30,10 +30,6 @@ class String(Resource):
     def init(self, value):
         self.value = value
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"value": [self.value]}
-
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "String: %r" % self.value

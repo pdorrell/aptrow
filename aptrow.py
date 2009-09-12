@@ -442,6 +442,10 @@ class StringParam(Param):
         """Value for a string parameter is just the string"""
         return stringValue
     
+    def getStringFromValue(self, value):
+        """Get the string which represents the value (i.e. inverse of getValueFromString)"""
+        return value
+    
     def label(self):
         return "String"
     
@@ -456,6 +460,10 @@ class ResourceParam(Param):
         """Convert to a value by looking up resource from URL"""
         return getResource(stringValue)
     
+    def getStringFromValue(self, value):
+        """Get the string which represents the value (i.e. inverse of getValueFromString)"""
+        return value.url()
+
     def label(self):
         return "Resource"
     
@@ -490,8 +498,17 @@ class Resource:
     def __init__(self, *args):
         self.module = None
         self.args = args
-        self.init(*args)
+        self.init(*args) # have to define init method for each Resource Class
         
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource.
+        Reconstructed from the args used to construct this resource object."""
+        paramsMap = {}
+        for resourceParam, arg in zip(self.__class__.resourceParams, self.args):
+            if arg != None:
+                paramsMap[resourceParam.name] = [resourceParam.getStringFromValue(arg)]
+        return paramsMap
+    
     def checkExists(self):
         """Default existence check: always passes.
         Resource objects are always created from URL definitions. Often they represent information
@@ -643,16 +660,12 @@ class FileContents(Resource):
     to the web browser (with an optionally specified content type). The 'file'
     can be any resource which has a suitable 'openBinaryFile()' method."""
 
-    resourceParams = [ResourceParam("file"), StringParam("contentType")]
+    resourceParams = [ResourceParam("file"), StringParam("contentType", optional = True)]
     
     def init(self, file, contentType = None):
         self.file = file
         self.contentType = contentType
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"file": [self.file.url()], "contentType": [self.contentType]}
-    
     def checkExists(self):
         """This resource exists if the file resource exists."""
         self.file.checkExists()

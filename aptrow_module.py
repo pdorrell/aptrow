@@ -26,9 +26,6 @@ class AptrowResource(Resource):
     def init(self):
         pass
     
-    def urlParams(self):
-        return {}
-    
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Aptrow"
@@ -47,9 +44,6 @@ class ResourceModuleResource(Resource):
     
     def init(self, prefix):
         self.prefix = prefix
-        
-    def urlParams(self):
-        return {"prefix": [self.prefix]}
         
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
@@ -80,9 +74,6 @@ class ResourceTypeResource(Resource):
         self.prefix = prefix
         self.type = type
         
-    def urlParams(self):
-        return {"prefix": [self.prefix], "type": [self.type]}
-        
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Aptrow Resource Type %s/%s" % (self.prefix, self.type)
@@ -109,10 +100,6 @@ class ResourceResource(Resource):
     
     def init(self, resource):
         self.resource = resource
-    
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"resource": [self.resource.url()]}
     
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""

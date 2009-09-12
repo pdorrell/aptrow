@@ -26,10 +26,6 @@ class Directory(Resource):
     def init(self, path):
         self.path = os.path.normpath(path)
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"path": [self.path]}
-
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Directory: %s" % self.path
@@ -149,10 +145,6 @@ class File(Resource):
     def init(self, path):
         self.path = os.path.normpath(path)
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"path": [self.path]}
-
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "File: %s" % self.path
@@ -209,10 +201,6 @@ class SearchForFileInDirectory(Resource):
         self.directory = directory
         self.pattern = pattern
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"dir": [self.directory.url()], "pattern": [self.pattern]}
-
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Search for %r in %s" % (self.pattern, self.directory.heading())

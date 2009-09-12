@@ -62,10 +62,6 @@ class ZipFile(Resource):
     def init(self, fileResource):
         self.fileResource = fileResource
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"file": [self.fileResource.url()]}
-        
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Zip file[%s]" % self.fileResource.heading()
@@ -155,10 +151,6 @@ class ZipFileDir(Resource):
         self.path = path
         self.matchPath = "" if path == "/" else path
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"zipfile": [self.zipFile.url()], "path": [self.path]}
-    
     def isRoot(self):
         return self.path == "/"
     
@@ -260,10 +252,6 @@ class ZipItem(Resource):
         self.zipFile = zipFile
         self.name = name
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"zipfile": [self.zipFile.url()], "name": [self.name]}
-    
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Item %s in %s" % (self.name, self.zipFile.heading())

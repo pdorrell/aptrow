@@ -27,10 +27,6 @@ class SqliteDatabase(Resource):
     def init(self, fileResource):
         self.fileResource = fileResource
 
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"file": [self.fileResource.url()]}
-
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Sqlite database [%s]" % self.fileResource.heading()
@@ -86,10 +82,6 @@ class SqliteTable(Resource):
         self.database = database
         self.name = name
         
-    def urlParams(self):
-        """Parameters required to construct the URL for this resource."""
-        return {"database": [self.database.url()], "name": [self.name]}
-    
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
         return "Table %s in %s" % (self.name, self.database.heading())
