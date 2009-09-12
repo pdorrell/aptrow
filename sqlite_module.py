@@ -17,7 +17,7 @@ import sqlite3
 
 aptrowModule = ResourceModule()
 
-@resourceTypeNameInModule("sqlite", aptrowModule)
+@resourceTypeNameInModule("database", aptrowModule)
 class SqliteDatabase(BaseResource):
 
     """A resource representing a sqlite database"""
@@ -76,13 +76,21 @@ class SqliteDatabase(BaseResource):
     def table(self, name):
         return SqliteTable(self, name)
 
-class SqliteTable(AttributeResource):
+@resourceTypeNameInModule("table", aptrowModule)
+class SqliteTable(BaseResource):
+    
+    """A resource representing a sqlite table"""
+    
+    resourceParams = [ResourceParam("database"), StringParam("name")]
+    
     def __init__(self, database, name):
+        BaseResource.__init__(self)
         self.database = database
         self.name = name
-
-    def baseObjectAndParams(self):
-        return (self.database, "table", {"name": self.name})
+        
+    def urlParams(self):
+        """Parameters required to construct the URL for this resource."""
+        return {"database": [self.database.url()], "name": [self.name]}
     
     def heading(self):
         """Default heading to describe this resource (plain text, no HTML)"""
