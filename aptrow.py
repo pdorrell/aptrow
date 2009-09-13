@@ -484,16 +484,6 @@ def attribute(*params):
         return func
     return decorator
 
-class AttributeMethod:
-    """An object that replaces a method decorated by @attribute. Wraps the method and parameter definitions."""
-    def __init__(self, method, params):
-        self.method = method
-        self.params = params
-        
-    def call(self, resource, paramsDict):
-        """How to call this method given a resource and a dict of named parameter values."""
-        return self.method(resource, *[param.getValue(paramsDict.get(param.name)) for param in self.params])
-    
 class Resource:
     """Base class for all resources handled and retrieved by the application."""
     
