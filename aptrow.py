@@ -20,6 +20,7 @@ import os
 import traceback
 import cgi
 import io
+import re
 
 import htmltags as tag
 
@@ -360,6 +361,48 @@ class AptrowQueryParams:
     
     def __init__(self, htmlParams):
         self.htmlParams = htmlParams
+        self._processParams()
+        
+    identifierPattern = r"([a-zA-Z][a-zA-Z0-9_]*)"
+    viewParamRegexp = re.compile(r"view\." + identifierPattern + "$")
+    attributeKeyRegexp = re.compile(r"_([0-9]*)$")
+    attributeParamRegexp = re.compile(r"_([0-9]*)\." + identifierPattern + "$")
+        
+    def _processParams(self):
+        print("htmlParams = %r" % self.htmlParams)
+        self.viewType = None
+        self.viewParams = {}
+        self.attributesMap = {}
+        self.attributesParamsMap = {}
+        self.params = {}
+        for key, values in self.htmlParams.items():
+            if key == "view":
+                self.viewType = values[0]
+                print (" viewType = %r" % self.viewType)
+                continue
+            viewParamMatch = AptrowQueryParams.viewParamRegexp.match(key)
+            if viewParamMatch:
+                viewParam = viewParamMatch.group(1)
+                self.viewParams[viewParam] = values[0]
+                print (" view[%s] = %r" % (viewParam, values[0]))
+                continue
+            attributeKeyMatch = AptrowQueryParams.attributeKeyRegexp.match(key)
+            if attributeKeyMatch:
+                attributeNum = int(attributeKeyMatch.group(1))
+                self.attributesMap[attributeNum] = values[0]
+                print (" attributesMap[%s] = %r" % (attributeNum, values[0]))
+                continue
+            attributeParamMatch = AptrowQueryParams.attributeParamRegexp.match(key)
+            if attributeParamMatch:
+                attributeNum = int(attributeParamMatch.group(1))
+                if attributeNum not in self.attributesParamsMap:
+                    self.attributesParamsMap[attributeNum] = {}
+                attributeParam = attributeParamMatch.group(2)
+                self.attributesParamsMap[attributeNum][attributeParam] = values[0]
+                print (" attributesParamsMap[%s][%s] = %r" % (attributeNum, attributeParam, values[0]))
+                continue
+            self.params[key] = values
+            print (" params[%s] = %r" % (key, values))
         
     def getString(self, name):
         """Retrieve an optional base resource parameter by name."""
