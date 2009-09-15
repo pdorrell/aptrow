@@ -151,8 +151,8 @@ def getResourceAndViewFromPathAndQuery(path, query):
     resourceParamValues = getResourceParams(aptrowQueryParams, resourceClass.resourceParams)
     object = resourceClass(*resourceParamValues)
     object.resourceParamValues = resourceParamValues # record parameters passed in
-    for attribute,params in aptrowQueryParams.attributesAndParams():
-        attributeValue = object.resolveAttribute(attribute, params)
+    for paramTree in aptrowQueryParams.attributeParams:
+        attributeValue = object.resolveAttribute(paramTree.value, paramTree)
         if attributeValue == None:
             raise UnknownAttributeException(attribute, object)
         object = attributeValue
@@ -336,6 +336,32 @@ def byView(viewType, methodsByViewType):
         methodsByViewType[viewType] = func
         return func
     return decorator
+
+class ParamTree:
+    def __init__(self, value = None):
+        self.value = value
+        self.branches = {}
+        
+    def addValue(self, key, value):
+        dotPos = key.find(".")
+        if dotPos == -1:
+            self.branches[key] = ParamTree(value)
+        else:
+            keyStart = key[:dotPos]
+            restOfKey = key[dotPos+1:]
+            branch = self.branches.get(keyStart)
+            if branch == None:
+                branch = ParamTree()
+                self.branches[keyStart] = branch
+            branch.addValue(restOfKey, value)
+            
+    def simpleKeyValues(self):
+        for key, branchValue in self.branches.items():
+            if branchValue.value != None:
+                yield key, branchValue.value
+                
+    def getBranch(self, name):
+        return self.branches.get(name)
   
 class AptrowQueryParams:
     """An object wrapping URL parameters, and presenting them as follows:
@@ -361,95 +387,58 @@ class AptrowQueryParams:
     
     def __init__(self, htmlParams):
         self.htmlParams = htmlParams
-        self._processParams()
+        self.processParams()
         
     identifierPattern = r"([a-zA-Z][a-zA-Z0-9_]*)"
     viewParamRegexp = re.compile(r"view\." + identifierPattern + "$")
     attributeKeyRegexp = re.compile(r"_([0-9]*)$")
     attributeParamRegexp = re.compile(r"_([0-9]*)\." + identifierPattern + "$")
-        
-    def _processParams(self):
+    
+    def processParams(self):
         print("htmlParams = %r" % self.htmlParams)
+        self.paramTree = ParamTree()
+        for key, values in self.htmlParams.items():
+            self.paramTree.addValue(key, values)
+        self.processViewParams()
+        self.processAttributeParams()
+        
+    def processViewParams(self):
         self.viewType = None
         self.viewParams = {}
-        self.attributesMap = {}
-        self.attributesParamsMap = {}
-        self.params = {}
-        for key, values in self.htmlParams.items():
-            if key == "view":
-                self.viewType = values[0]
-                print (" viewType = %r" % self.viewType)
-                continue
-            viewParamMatch = AptrowQueryParams.viewParamRegexp.match(key)
-            if viewParamMatch:
-                viewParam = viewParamMatch.group(1)
-                self.viewParams[viewParam] = values[0]
-                print (" view[%s] = %r" % (viewParam, values[0]))
-                continue
-            attributeKeyMatch = AptrowQueryParams.attributeKeyRegexp.match(key)
-            if attributeKeyMatch:
-                attributeNum = int(attributeKeyMatch.group(1))
-                self.attributesMap[attributeNum] = values[0]
-                print (" attributesMap[%s] = %r" % (attributeNum, values[0]))
-                continue
-            attributeParamMatch = AptrowQueryParams.attributeParamRegexp.match(key)
-            if attributeParamMatch:
-                attributeNum = int(attributeParamMatch.group(1))
-                if attributeNum not in self.attributesParamsMap:
-                    self.attributesParamsMap[attributeNum] = {}
-                attributeParam = attributeParamMatch.group(2)
-                self.attributesParamsMap[attributeNum][attributeParam] = values[0]
-                print (" attributesParamsMap[%s][%s] = %r" % (attributeNum, attributeParam, values[0]))
-                continue
-            self.params[key] = values
-            print (" params[%s] = %r" % (key, values))
-        
-    def getString(self, name):
-        """Retrieve an optional base resource parameter by name."""
-        valuesArray = self.htmlParams.get(name)
-        return None if valuesArray == None else valuesArray[0]
+        viewParamTree = self.paramTree.getBranch("view")
+        if viewParamTree != None:
+            self.viewType = viewParamTree.value[0]
+            for key, value in viewParamTree.simpleKeyValues():
+                self.viewParams[key] = value[0]
+                
+    def processAttributeParams(self):
+        count = 1
+        finished = False
+        self.attributeParams = []
+        while not finished:
+            attributeKey = "_%s" % count
+            attributeParamTree = self.paramTree.branches.get(attributeKey)
+            if attributeParamTree != None and attributeParamTree.value != None:
+                self.attributeParams.push(attributeParamTree)
+                count += 1
+            else:
+                finished = True
+                
+    def getParamTree(self, name):
+        return self.paramTree.getBranch(name)
     
-    def getRequiredString(self, name):
-        """Retrieve a required base resource parameter by name."""
-        value = self.getString(name)
+    def getRequiredParamTree(self, name):
+        value = self.paramTree(name)
         if value == None:
             raise ParameterException("Missing parameter %r" % name)
         return value
-    
-    def attributesAndParams(self):
-        """Extract attribute parameters as a list of pairs of names and parameter dicts."""
-        count = 1
-        finished = False
-        while not finished:
-            attributeKey = "_%s" % count
-            attribute = self.getString(attributeKey)
-            if attribute == None:
-                finished = True
-            else:
-                yield (attribute, self.attributeParams(count))
-                count += 1
-                
-    def attributeParams(self, count):
-        """For a given attribute lookup (identified by number from 1 up), retrieve parameters
-        for that lookup into a dict."""
-        params = {}
-        for key, value in self.htmlParams.items():
-            prefix = "_%s." % count
-            if key.startswith(prefix):
-                params[key[len(prefix):]] = value[0]
-        return params
-    
+        
     def getView(self, defaultType = None):
         """Get the View object defined by the 'view' and 'view.<param>' URL parameters."""
-        type = self.getString("view")
-        if type == None:
+        if self.viewType == None:
             return None
         else:
-            params = {}
-            for key, value in self.htmlParams.items():
-                if key.startswith("view."):
-                    params[key[len("view."):]] = value[0]
-            return View(type, params)
+            return View(self.viewType, self.viewParams)
     
 class NoSuchObjectException(MessageException):
     """Thrown when a Resource has been created and is then later found not to represent a valid resource. 
@@ -466,16 +455,16 @@ class Param:
         self.name = name
         self.optional = optional
         
-    def getValue(self, stringValue):
-        """Get value of parameter from a string value. 
+    def getValue(self, paramTree):
+        """Get value of parameter from a ParamTree
         (Depends on definition of getStringValue method, if a value is supplied.)"""
-        if stringValue == None:
+        if paramTree == None:
             if self.optional:
                 return None
             else:
                 raise MissingParameterException(self.name)
         else:
-            return self.getValueFromString(stringValue)
+            return self.getValueFromParamTree(paramTree)
         
     def description(self):
         return "%s[%s%s]" % (self.label(), self.name, " (optional)" if self.optional else "")
@@ -483,9 +472,9 @@ class Param:
 class StringParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a string value."""
         
-    def getValueFromString(self, stringValue):
+    def getValueFromParamTree(self, paramTree):
         """Value for a string parameter is just the string"""
-        return stringValue
+        return paramTree.value[0]
     
     def getStringFromValue(self, value):
         """Get the string which represents the value (i.e. inverse of getValueFromString)"""
@@ -501,9 +490,9 @@ class ResourceParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a URL representing
     another resource (to be used as input when creating the resource being created)."""
         
-    def getValueFromString(self, stringValue):
+    def getValueFromParamTree(self, paramTree):
         """Convert to a value by looking up resource from URL"""
-        return getResource(stringValue)
+        return getResource(paramTree.value[0])
     
     def getStringFromValue(self, value):
         """Get the string which represents the value (i.e. inverse of getValueFromString)"""
@@ -517,7 +506,7 @@ class ResourceParam(Param):
     
 def getResourceParams(queryParams, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
-    return [paramDefinition.getValue(queryParams.getString(paramDefinition.name)) 
+    return [paramDefinition.getValue(queryParams.paramTree.getBranch(paramDefinition.name)) 
             for paramDefinition in paramDefinitions]
   
 def attribute(*params):
@@ -609,12 +598,12 @@ class Resource:
             yield "<div class =\"aptrowError\">Error: %s</div>" % (h(str(error)),)
         yield "</body></html>"
         
-    def resolveAttribute(self, attribute, params):
+    def resolveAttribute(self, attribute, paramTree):
         """Resolve an attribute, by looking for a method with same name decorated by @attribute decorator."""
         attributeMethod = self.__class__.__dict__.get(attribute)
         if hasattr(attributeMethod, "aptrowAttributeParams"):
             attributeParams = attributeMethod.aptrowAttributeParams
-            return attributeMethod(self, *[param.getValue(params.get(param.name)) for param in attributeParams])
+            return attributeMethod(self, *[param.getValue(paramTree.getBranch(param.name)) for param in attributeParams])
         else:
             return None
         
