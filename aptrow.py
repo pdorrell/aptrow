@@ -118,7 +118,7 @@ def getResource(url):
         resource, view = getResourceAndViewFromPathAndQuery(path, query)
         return resource
     else:
-        raise Error("Non-local resource URL's not yet implemented (doesn't start with '/'): %s" % localUrl)
+        raise ParameterException("Non-local resource URL's not yet implemented (doesn't start with '/'): %s" % localUrl)
     
 class UnknownAttributeException(MessageException):
     """Thrown when an attribute name is not valid."""
@@ -148,7 +148,7 @@ def getResourceAndViewFromPathAndQuery(path, query):
         raise ResourceTypeNotFoundForPathException(path)
     queryParams = urllib.parse.parse_qs(query)
     aptrowQueryParams = AptrowQueryParams(queryParams)
-    resourceParamValues = getResourceParams(aptrowQueryParams, resourceClass.resourceParams)
+    resourceParamValues = getResourceParams(aptrowQueryParams.paramTree, resourceClass.resourceParams)
     object = resourceClass(*resourceParamValues)
     object.resourceParamValues = resourceParamValues # record parameters passed in
     for paramTree in aptrowQueryParams.attributeParams:
@@ -495,7 +495,36 @@ class ResourceParam(Param):
         
     def getValueFromParamTree(self, paramTree):
         """Convert to a value by looking up resource from URL"""
-        return getResource(paramTree.value[0])
+        if paramTree.value != None:
+            return getResource(paramTree.value[0])
+        else:
+            return self.getResourceFromDottedParams(paramTree)
+        
+    def getResourceClassFromResourceType(self, resourceType):
+        dotPos = resourceType.find(".")
+        if dotPos == -1:
+            raise ParameterException("No '.' in resource type %s" % resourceType)
+        moduleKey = resourceType[:dotPos]
+        resourceModule = resourceModules.get(moduleKey)
+        if resourceModule == None:
+            raise ParameterException("No resource module found for key %s" % moduleKey)
+        classKey = resourceType[dotPos+1:]
+        resourceClass = resourceModule.getResourceClass(classKey)
+        if resourceClass == None:
+            raise ParameterException("No resource class found for resourceType %s" % resourceType)
+        return resourceClass
+        
+    def getResourceFromDottedParams(self, paramTree):
+        resourceTypeBranch = paramTree.branches.get("_type")
+        if resourceTypeBranch == None or resourceTypeBranch.value == None:
+            raise ParameterException("Missing _type parameter for resource (and no resource URL supplied)")
+        resourceType = resourceTypeBranch.value[0]
+        # todo: refactor duplication in getResourceAndViewFromPathAndQuery
+        resourceClass = self.getResourceClassFromResourceType(resourceType)
+        resourceParamValues = getResourceParams(paramTree, resourceClass.resourceParams)
+        object = resourceClass(*resourceParamValues)
+        object.resourceParamValues = resourceParamValues # record parameters passed in
+        return object
     
     def getStringFromValue(self, value):
         """Get the string which represents the value (i.e. inverse of getValueFromString)"""
@@ -507,9 +536,15 @@ class ResourceParam(Param):
     def reflectionHtml(self, value):
         return [h(self.name), " =", tag.BR(), value.reflectionHtml()]
     
-def getResourceParams(queryParams, paramDefinitions):
+    def addDottedParams(self, paramsMap, prefix, value):
+        valueType = "%s.%s" % (value.modulePrefix(), value.__class__.resourcePath)
+        paramsPrefix = "%s%s." % (prefix, self.name)
+        paramsMap["%s_type" % paramsPrefix] = valueType
+        value.addDottedParams(paramsMap, paramsPrefix)
+    
+def getResourceParams(paramTree, paramDefinitions):
     """Get parameters for creating a resource from an AptrowQueryParams and an array of parameter definitions"""
-    return [paramDefinition.getValue(queryParams.paramTree.getBranch(paramDefinition.name)) 
+    return [paramDefinition.getValue(paramTree.getBranch(paramDefinition.name)) 
             for paramDefinition in paramDefinitions]
   
 def attribute(*params):
@@ -551,7 +586,6 @@ class Resource:
         Using dotted parameter names for parameters which are resources.
         Reconstructed from the args used to construct this resource object."""
         paramsMap = {}
-        paramsMap["_dotted"] = "true"
         self.addDottedParams(paramsMap, prefix = "")
         return paramsMap
     
@@ -654,16 +688,13 @@ class Resource:
                 ")"]
 
     def modulePrefix(self):
-        if hasattr(self.__class__, "module"):
-            return "/" + self.__class__.module.urlPrefix
-        else:
-            return ""
+        return self.__class__.module.urlPrefix
 
     def url(self, attributesAndParams = [], view = None):
         """ Construct URL for this resource, from registered resource type and parameter
         values from urlParams(). Any supplied attribute lookups are added to the end of the URL."""
-        urlString = "%s/%s?%s" % (self.modulePrefix(), self.__class__.resourcePath, 
-                                urllib.parse.urlencode(self.urlParams(), True))
+        urlString = "/%s/%s?%s" % (self.modulePrefix(), self.__class__.resourcePath, 
+                                   urllib.parse.urlencode(self.urlParams(), True))
         count = 1
         for attribute,params in attributesAndParams:
             urlString += "&%s" % urllib.parse.urlencode(self.attributeUrlParams(attribute, count, params))
@@ -674,7 +705,7 @@ class Resource:
     
     def formActionParamsAndCount(self, attributesAndParams = []):
         """Return form action, params (for hidden inputs) and count (for additional attribute params)"""
-        action = "%s/%s" % (self.modulePrefix(), self.__class__.resourcePath)
+        action = "/%s/%s" % (self.modulePrefix(), self.__class__.resourcePath)
         params = []
         for key, values in self.urlParams().items():
             for value in values:
