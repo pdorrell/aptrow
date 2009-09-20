@@ -70,7 +70,8 @@ class ResourceModule:
         """Lookup named Resource class"""
         resourceClass = self.classes.get(name)
         if resourceClass == None:
-            raise ResourceTypeNotFoundForPathException("%s%s" % (self.urlPrefix, name))
+            raise ResourceTypeNotFoundException("%s.%s" % (self.urlPrefix, name), 
+                                                "no resource type '%s' found in module" % name)
         return resourceClass
         
 aptrowModule = ResourceModule()
@@ -91,11 +92,12 @@ class MessageException(Exception):
     def __str__(self):
         return self.message
 
-class ResourceTypeNotFoundForPathException(MessageException):
+class ResourceTypeNotFoundException(MessageException):
     """Thrown when looking up a resource type not registered in resourceClasses."""
-    def __init__(self, path):
-        self.path = path
-        self.message = "No resource type defined for path \"%s\"" % path
+    def __init__(self, resourceType, explanation):
+        self.resourceType = resourceType
+        self.explanation = explanation
+        self.message = "No resource type defined for \"%s\": %s" % (resourceType, explanation)
 
 def getResource(url):
     """Given a URL, find or create the corresponding resource that the URL represents.
@@ -126,6 +128,19 @@ class UnknownAttributeException(MessageException):
         self.attribute = attribute
         self.resource = resource
         self.message = "No attribute \"%s\" defined for resource [%s]" % (attribute, resource.heading())
+        
+def getResourceClassForType(resourceType):
+    """A resource type consists of two identifiers separated by a '.'. The first
+    identifier is for the module, and the second is the name given to the resource
+    class within the module"""
+    dotPos = resourceType.find(".")
+    if dotPos == -1:
+        raise ResourceTypeNotFoundException(resourceType, "invalid resource type: missing '.' character")
+    moduleKey = resourceType[:dotPos]
+    resourceModule = resourceModules.get(moduleKey)
+    if resourceModule == None:
+        raise ResourceTypeNotFoundException(resourceType, "no such module '%s'" % moduleKey)
+    return resourceModule.getResourceClass(resourceType[dotPos+1:])
     
 def getResourceAndViewFromPathAndQuery(path, query):
     """Look up resource object from URL path and query. This includes processing of parameters passed to the
@@ -134,18 +149,7 @@ def getResourceAndViewFromPathAndQuery(path, query):
     "contents" attribute of a File resource, with additional optional parameter "contentType".) 
     A numbering scheme allows attribute lookups to be chained (see AptrowQueryParams for details). 
     """
-    dotPos = path.find(".")
-    if dotPos != -1:
-        urlPrefix = path[:dotPos]
-        resourceModule = resourceModules.get(urlPrefix)
-    else:
-        resourceModule = None
-    if resourceModule == None:
-        raise ResourceTypeNotFoundForPathException(path)
-    else:
-        resourceClass = resourceModule.getResourceClass(path[dotPos+1:])
-    if resourceClass == None:
-        raise ResourceTypeNotFoundForPathException(path)
+    resourceClass = getResourceClassForType(path)
     queryParams = urllib.parse.parse_qs(query)
     aptrowQueryParams = AptrowQueryParams(queryParams)
     resourceParamValues = getResourceParams(aptrowQueryParams.paramTree, resourceClass.resourceParams)
@@ -192,12 +196,8 @@ class AptrowApp:
             for text in object.page(self, view): yield text
         except MissingParameterException as exc:
             yield self.not_found("For resource type \"%s\" %s" % (pathInfo, exc.message))
-        except UnknownAttributeException as exc:
+        except (MessageException) as exc:
             yield self.not_found(exc.message)
-        except ResourceTypeNotFoundForPathException as exc:
-            yield self.not_found("No resource type defined for path \"%s\"" % pathInfo)
-        except (NoSuchObjectException, ParameterException) as exception:
-            yield self.not_found(exception.message)
 
 def runAptrowServer(host, port):
     from wsgiref.simple_server import make_server
@@ -216,7 +216,7 @@ class ParameterException(MessageException):
 class MissingParameterException(MessageException):
     """Thrown when a required URL parameter is missing"""
     def __init__(self, name = None):
-        self.message = "Missing parameter %r" % name
+        self.message = "Missing parameter: %r" % name
         
 class UnknownViewTypeException(MessageException):
     """Thrown when a view type is invalid"""
@@ -464,7 +464,7 @@ class Param:
             if self.optional:
                 return None
             else:
-                raise Exception("Missing parameter %s" % self.name)
+                raise MissingParameterException(self.name)
         else:
             return self.getValueFromParamTree(paramTree)
         
@@ -521,8 +521,7 @@ class ResourceParam(Param):
         if resourceTypeBranch == None or resourceTypeBranch.value == None:
             raise ParameterException("Missing _type parameter for resource (and no resource URL supplied)")
         resourceType = resourceTypeBranch.value[0]
-        # todo: refactor duplication in getResourceAndViewFromPathAndQuery
-        resourceClass = self.getResourceClassFromResourceType(resourceType)
+        resourceClass = getResourceClassForType(resourceType)
         resourceParamValues = getResourceParams(paramTree, resourceClass.resourceParams)
         object = resourceClass(*resourceParamValues)
         object.resourceParamValues = resourceParamValues # record parameters passed in
