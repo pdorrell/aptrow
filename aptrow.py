@@ -134,16 +134,16 @@ def getResourceAndViewFromPathAndQuery(path, query):
     "contents" attribute of a File resource, with additional optional parameter "contentType".) 
     A numbering scheme allows attribute lookups to be chained (see AptrowQueryParams for details). 
     """
-    secondSlashPos = path.find("/")
-    if secondSlashPos != -1:
-        urlPrefix = path[:secondSlashPos]
+    dotPos = path.find(".")
+    if dotPos != -1:
+        urlPrefix = path[:dotPos]
         resourceModule = resourceModules.get(urlPrefix)
     else:
         resourceModule = None
     if resourceModule == None:
         raise ResourceTypeNotFoundForPathException(path)
     else:
-        resourceClass = resourceModule.getResourceClass(path[secondSlashPos+1:])
+        resourceClass = resourceModule.getResourceClass(path[dotPos+1:])
     if resourceClass == None:
         raise ResourceTypeNotFoundForPathException(path)
     queryParams = urllib.parse.parse_qs(query)
@@ -693,7 +693,7 @@ class Resource:
     def url(self, attributesAndParams = [], view = None):
         """ Construct URL for this resource, from registered resource type and parameter
         values from urlParams(). Any supplied attribute lookups are added to the end of the URL."""
-        urlString = "/%s/%s?%s" % (self.modulePrefix(), self.__class__.resourcePath, 
+        urlString = "/%s.%s?%s" % (self.modulePrefix(), self.__class__.resourcePath, 
                                    urllib.parse.urlencode(self.urlParams(), True))
         count = 1
         for attribute,params in attributesAndParams:
@@ -705,7 +705,7 @@ class Resource:
     
     def formActionParamsAndCount(self, attributesAndParams = []):
         """Return form action, params (for hidden inputs) and count (for additional attribute params)"""
-        action = "/%s/%s" % (self.modulePrefix(), self.__class__.resourcePath)
+        action = "/%s.%s" % (self.modulePrefix(), self.__class__.resourcePath)
         params = []
         for key, values in self.urlParams().items():
             for value in values:
