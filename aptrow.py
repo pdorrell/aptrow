@@ -495,6 +495,10 @@ class ResourceParam(Param):
     """Parameter definition for an expected base resource parameter, expecting it to be a URL representing
     another resource (to be used as input when creating the resource being created)."""
         
+    def __init__(self, name, optional = False, defaultClass = None):
+        Param.__init__(self, name, optional)
+        self.defaultClass = defaultClass
+        
     def getValueFromParamTree(self, paramTree):
         """Convert to a value by looking up resource from URL"""
         if paramTree.value != None:
@@ -519,9 +523,17 @@ class ResourceParam(Param):
     def getResourceFromDottedParams(self, paramTree):
         resourceTypeBranch = paramTree.branches.get("_type")
         if resourceTypeBranch == None or resourceTypeBranch.value == None:
-            raise ParameterException("Missing _type parameter for resource (and no resource URL supplied)")
-        resourceType = resourceTypeBranch.value[0]
-        resourceClass = getResourceClassForType(resourceType)
+            resourceType = None
+        else:
+            resourceType = resourceTypeBranch.value[0]
+        if resourceType == None:
+            if self.defaultClass == None:
+                raise ParameterException("Missing _type parameter for resource " + 
+                                         "(and no resource URL supplied, and no default resource class)")
+            else:
+                resourceClass = self.defaultClass
+        else:
+            resourceClass = getResourceClassForType(resourceType)
         resourceParamValues = getResourceParams(paramTree, resourceClass.resourceParams)
         object = resourceClass(*resourceParamValues)
         object.resourceParamValues = resourceParamValues # record parameters passed in
@@ -539,7 +551,8 @@ class ResourceParam(Param):
     
     def addDottedParams(self, paramsMap, prefix, value):
         paramsPrefix = "%s%s." % (prefix, self.name)
-        paramsMap["%s_type" % paramsPrefix] = [value.resourceType()]
+        if value.__class__ != self.defaultClass:
+            paramsMap["%s_type" % paramsPrefix] = [value.resourceType()]
         value.addDottedParams(paramsMap, paramsPrefix)
     
 def getResourceParams(paramTree, paramDefinitions):

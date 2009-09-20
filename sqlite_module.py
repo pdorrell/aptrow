@@ -76,7 +76,7 @@ class SqliteTable(Resource):
     
     """A resource representing a sqlite table"""
     
-    resourceParams = [ResourceParam("database"), StringParam("name")]
+    resourceParams = [ResourceParam("database", defaultClass = SqliteDatabase), StringParam("name")]
     
     def init(self, database, name):
         self.database = database
