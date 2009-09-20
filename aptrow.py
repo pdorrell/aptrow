@@ -466,6 +466,9 @@ class Param:
         else:
             return self.getValueFromParamTree(paramTree)
         
+    def addDottedParams(self, paramsMap, prefix, value):
+        paramsMap["%s%s" % (prefix, self.name)] = self.getStringFromValue(value)
+    
     def description(self):
         return "%s[%s%s]" % (self.label(), self.name, " (optional)" if self.optional else "")
 
@@ -525,12 +528,31 @@ class Resource:
         self.init(*args) # have to define init method for each Resource Class
         
     def urlParams(self):
+        return self.dottedUrlParams()
+    
+    def resourceBasedUrlParams(self):
         """Parameters required to construct the URL for this resource.
+        Each resource is represented by its URL.
         Reconstructed from the args used to construct this resource object."""
         paramsMap = {}
         for resourceParam, arg in zip(self.__class__.resourceParams, self.args):
             if arg != None:
                 paramsMap[resourceParam.name] = [resourceParam.getStringFromValue(arg)]
+        return paramsMap
+    
+    def addDottedParams(self, paramsMap, prefix = ""):
+        for resourceParam, arg in zip(self.__class__.resourceParams, self.args):
+            if arg != None:
+                resourceParam.addDottedParams(paramsMap, prefix, arg)
+        return paramsMap
+    
+    def dottedUrlParams(self):
+        """Parameters required to construct the URL for this resource.
+        Using dotted parameter names for parameters which are resources.
+        Reconstructed from the args used to construct this resource object."""
+        paramsMap = {}
+        paramsMap["_dotted"] = "true"
+        self.addDottedParams(paramsMap, prefix = "")
         return paramsMap
     
     def checkExists(self):
