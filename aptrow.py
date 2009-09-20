@@ -152,7 +152,7 @@ def getResourceAndViewFromPathAndQuery(path, query):
     object = resourceClass(*resourceParamValues)
     object.resourceParamValues = resourceParamValues # record parameters passed in
     for paramTree in aptrowQueryParams.attributeParams:
-        attributeValue = object.resolveAttribute(paramTree.value, paramTree)
+        attributeValue = object.resolveAttribute(paramTree.value[0], paramTree)
         if attributeValue == None:
             raise UnknownAttributeException(attribute, object)
         object = attributeValue
@@ -216,7 +216,7 @@ class ParameterException(MessageException):
 class MissingParameterException(MessageException):
     """Thrown when a required URL parameter is missing"""
     def __init__(self, name = None):
-        self.message = "Missing parameter %s" % name
+        self.message = "Missing parameter %r" % name
         
 class UnknownViewTypeException(MessageException):
     """Thrown when a view type is invalid"""
@@ -345,14 +345,18 @@ class ParamTree:
     def addValue(self, key, value):
         dotPos = key.find(".")
         if dotPos == -1:
-            self.branches[key] = ParamTree(value)
+            branchKey = key
+            restOfKey = None
         else:
-            keyStart = key[:dotPos]
+            branchKey = key[:dotPos]
             restOfKey = key[dotPos+1:]
-            branch = self.branches.get(keyStart)
-            if branch == None:
-                branch = ParamTree()
-                self.branches[keyStart] = branch
+        branch = self.branches.get(branchKey)
+        if branch == None:
+            branch = ParamTree()
+            self.branches[branchKey] = branch
+        if restOfKey == None:
+            branch.value = value
+        else:
             branch.addValue(restOfKey, value)
             
     def simpleKeyValues(self):
@@ -362,6 +366,9 @@ class ParamTree:
                 
     def getBranch(self, name):
         return self.branches.get(name)
+    
+    def __repr__(self):
+        return "ParamTree[value = %r, branches = %r]" % (self.value, self.branches)
   
 class AptrowQueryParams:
     """An object wrapping URL parameters, and presenting them as follows:
@@ -389,11 +396,6 @@ class AptrowQueryParams:
         self.htmlParams = htmlParams
         self.processParams()
         
-    identifierPattern = r"([a-zA-Z][a-zA-Z0-9_]*)"
-    viewParamRegexp = re.compile(r"view\." + identifierPattern + "$")
-    attributeKeyRegexp = re.compile(r"_([0-9]*)$")
-    attributeParamRegexp = re.compile(r"_([0-9]*)\." + identifierPattern + "$")
-    
     def processParams(self):
         print("htmlParams = %r" % self.htmlParams)
         self.paramTree = ParamTree()
@@ -419,7 +421,7 @@ class AptrowQueryParams:
             attributeKey = "_%s" % count
             attributeParamTree = self.paramTree.branches.get(attributeKey)
             if attributeParamTree != None and attributeParamTree.value != None:
-                self.attributeParams.push(attributeParamTree)
+                self.attributeParams.append(attributeParamTree)
                 count += 1
             else:
                 finished = True
@@ -462,12 +464,12 @@ class Param:
             if self.optional:
                 return None
             else:
-                raise MissingParameterException(self.name)
+                raise Exception("Missing parameter %s" % self.name)
         else:
             return self.getValueFromParamTree(paramTree)
         
     def addDottedParams(self, paramsMap, prefix, value):
-        paramsMap["%s%s" % (prefix, self.name)] = self.getStringFromValue(value)
+        paramsMap["%s%s" % (prefix, self.name)] = [self.getStringFromValue(value)]
     
     def description(self):
         return "%s[%s%s]" % (self.label(), self.name, " (optional)" if self.optional else "")
@@ -537,9 +539,8 @@ class ResourceParam(Param):
         return [h(self.name), " =", tag.BR(), value.reflectionHtml()]
     
     def addDottedParams(self, paramsMap, prefix, value):
-        valueType = "%s.%s" % (value.modulePrefix(), value.__class__.resourcePath)
         paramsPrefix = "%s%s." % (prefix, self.name)
-        paramsMap["%s_type" % paramsPrefix] = valueType
+        paramsMap["%s_type" % paramsPrefix] = [value.resourceType()]
         value.addDottedParams(paramsMap, paramsPrefix)
     
 def getResourceParams(paramTree, paramDefinitions):
@@ -687,14 +688,14 @@ class Resource:
                             for depth in range(1, maxDepths+1)]),
                 ")"]
 
-    def modulePrefix(self):
-        return self.__class__.module.urlPrefix
+    def resourceType(self):
+        """Identifier for resource class (AKA 'type') = <module>.<class id in module>"""
+        return self.__class__.module.urlPrefix + "." + self.__class__.resourcePath
 
     def url(self, attributesAndParams = [], view = None):
         """ Construct URL for this resource, from registered resource type and parameter
         values from urlParams(). Any supplied attribute lookups are added to the end of the URL."""
-        urlString = "/%s.%s?%s" % (self.modulePrefix(), self.__class__.resourcePath, 
-                                   urllib.parse.urlencode(self.urlParams(), True))
+        urlString = "/%s?%s" % (self.resourceType(), urllib.parse.urlencode(self.urlParams(), True))
         count = 1
         for attribute,params in attributesAndParams:
             urlString += "&%s" % urllib.parse.urlencode(self.attributeUrlParams(attribute, count, params))
@@ -705,7 +706,7 @@ class Resource:
     
     def formActionParamsAndCount(self, attributesAndParams = []):
         """Return form action, params (for hidden inputs) and count (for additional attribute params)"""
-        action = "/%s.%s" % (self.modulePrefix(), self.__class__.resourcePath)
+        action = "/%s" % self.resourceType()
         params = []
         for key, values in self.urlParams().items():
             for value in values:
