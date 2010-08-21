@@ -31,6 +31,6 @@ addModule ("sqlite",  "sqlite_module")
 # (Also, this application may create temporary files which it does not delete, which are copies
 #  of the contents of 'file-like' objects which are not themselves files.)
         
-runAptrowServer('localhost', 8000)
+runAptrowServer("localhost", 8000)
 
 # suggested starting URL: http://localhost:8000/files/dir?path=c:\
