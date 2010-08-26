@@ -99,18 +99,23 @@ class SqliteTable(Resource):
         if not tableExists:
             raise NoSuchObjectException("No table %s in %s" %(self.name, self.database.heading()))
         
-    def listQueryResults(self, query, args = []):
+    def listQueryResults(self, query, args = [], maxCount = None):
         with self.database.connect() as connection:
             cursor = connection.cursor()
             cursor.execute (query, *args)
             yield (True, [desc[0] for desc in cursor.description])
+            count = 0
             for row in cursor:
-                yield (False, row)
+                if maxCount == None or count < maxCount:
+                    yield (False, row)
+                    count += 1
+                else:
+                    break
                 
-    def listQueryResultsInHtmlTable(self, query, args = []):
+    def listQueryResultsInHtmlTable(self, query, args = [], maxCount = None):
         yield tag.TABLE(border = 1).start()
-        for isHeader, row in self.listQueryResults(query):
-            yield tag.TR([tag.TD(h(str(item))) for item in row])
+        for isHeader, row in self.listQueryResults(query, maxCount = maxCount):
+            yield tag.TR([tag.TD(ht(str(item))) for item in row])
         yield tag.TABLE().end()
     
     def html(self, view):
@@ -119,5 +124,6 @@ class SqliteTable(Resource):
         yield tag.P(tag.A("Database", href = self.database.url()))
         yield tag.H2("Table Info")
         for element in self.listQueryResultsInHtmlTable("pragma table_info(\"%s\")" % self.name): yield element
-        yield tag.H2("Rows")
-        for element in self.listQueryResultsInHtmlTable("SELECT * FROM \"%s\"" % self.name): yield element
+        yield tag.H2("Rows (up to a maximum of 100)")
+        for element in self.listQueryResultsInHtmlTable("SELECT * FROM \"%s\"" % self.name, 
+                                                        maxCount = 100): yield element

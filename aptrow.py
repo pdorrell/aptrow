@@ -28,6 +28,10 @@ def h(value):
     """ HTML escape a string value """
     return cgi.escape(value)
 
+def ht(value):
+    """ HTML escape a string value in a table cell"""
+    return cgi.escape(value) if value else "&nbsp;"
+
 def hr(value):
     """ HTML escape %r version of object description """
     return h(value.__repr__())
